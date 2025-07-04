@@ -1,0 +1,27 @@
+# Environnement virtuel
+.venv/
+
+# Fichiers compilés
+__pycache__/
+*.pyc
+
+# Système
+.DS_Store
+Thumbs.db
+
+# IDE / éditeurs
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Bases de données temporaires
+*.sqlite3
+
+# Fichiers temporaires divers
+*.tmp
+*.bak
+
+# Données générées localement
+data/
