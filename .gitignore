@@ -25,3 +25,13 @@ Thumbs.db
 
 # Données générées localement
 data/
+
+# Fichiers de lancement / dev locaux
+dev-launch.py
+launch-dev.bat
+
+# Raccourcis Windows
+*.lnk
+
+# Config utilisateur (ne pas versionner)
+config/*.json
