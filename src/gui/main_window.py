@@ -6,10 +6,14 @@
 # La position et la taille de la fenêtre sont restaurées automatiquement
 # L’état est sauvegardé en différé lorsqu’on déplace ou redimensionne la fenêtre
 
+import os
+
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QWidget
 
 from core.window_config import load_window_state, save_window_state
+from gui.home_screen import HomeScreen
 from gui.sidebar import Sidebar
 
 
@@ -35,6 +39,10 @@ class MainWindow(QMainWindow):
         - Timer de sauvegarde intelligente
         """
         self.setWindowTitle("Vølund")
+
+        # Définir l'icône (Windows .ico)
+        icon_path = os.path.join("assets/icons/", "volund.ico")
+        self.setWindowIcon(QIcon(icon_path))
 
         # Charger la configuration sauvegardée
         state = load_window_state()
@@ -67,9 +75,12 @@ class MainWindow(QMainWindow):
         Crée et ajoute la zone centrale (accueil, modules...) à droite.
         Pour l’instant, simple fond sombre en placeholder.
         """
-        self.content_area = QWidget()
-        self.content_area.setStyleSheet("background-color: #1e1e1e;")
-        self.main_layout.addWidget(self.content_area)
+        # self.content_area = QWidget()
+        # self.content_area.setStyleSheet("background-color: #1e1e1e;")
+        # self.main_layout.addWidget(self.content_area)
+        self.home_screen = HomeScreen()
+        # Ajouter la page d’accueil au layout principal
+        self.main_layout.addWidget(self.home_screen)
 
     def closeEvent(self, event):
         """

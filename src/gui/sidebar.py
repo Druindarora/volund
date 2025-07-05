@@ -43,8 +43,12 @@
 # ⚠️ Ne pas importer de bibliothèques externes
 # Le code doit rester simple, modulaire, et maintenable.
 
-from PySide6.QtCore import Qt
+
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
+
+from gui.images_paths import ICONS
 
 
 class Sidebar(QFrame):
@@ -60,7 +64,9 @@ class Sidebar(QFrame):
         layout.setSpacing(0)
 
         # Ajouter le bouton Home en haut
-        self.home_button = QPushButton("🏠")
+        self.home_button = QPushButton()
+        self.home_button.setIcon(QIcon(ICONS["home"]))
+        self.home_button.setIconSize(QSize(35, 35))
         self.home_button.setFixedSize(40, 40)
         layout.addWidget(self.home_button, alignment=Qt.AlignHCenter)
 
@@ -68,7 +74,9 @@ class Sidebar(QFrame):
         layout.addStretch()
 
         # Ajouter le bouton Settings en bas
-        self.settings_button = QPushButton("⚙️")
+        self.settings_button = QPushButton()
+        self.settings_button.setIcon(QIcon(ICONS["settings"]))
+        self.settings_button.setIconSize(QSize(30, 30))
         self.settings_button.setFixedSize(40, 40)
         layout.addWidget(self.settings_button, alignment=Qt.AlignHCenter)
 
