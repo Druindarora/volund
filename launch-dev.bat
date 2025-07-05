@@ -1,9 +1,10 @@
 @echo off
 title VOLUND - Développement
+cd /d "%~dp0"
 
-REM Active l'environnement virtuel
-call .venv\Scripts\activate.bat
+REM Utilise directement le python du .venv (sans activer de session)
+call .venv\Scripts\python.exe dev_launcher.py
 
-REM Lance le script de dev avec redémarrage auto
-REM /K garde la console ouverte après l'exécution
-cmd /K python dev_launcher.py
+REM Garde la console ouverte après exécution
+echo.
+pause

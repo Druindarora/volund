@@ -1,4 +1,2 @@
-[tool.ruff]
-line-length = 100
-fix = true
+[tool.ruff.lint]
 select = ["F401"]  # F401 = unused imports
