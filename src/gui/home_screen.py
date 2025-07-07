@@ -1,13 +1,18 @@
-from PySide6.QtCore import QMimeData, Qt
-from PySide6.QtGui import QDrag, QFont, QPixmap
+import os
+
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QFont, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
+    QHBoxLayout,
     QLabel,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
+
+from utils.settings import Settings
 
 
 class HomeScreen(QWidget):
@@ -16,77 +21,37 @@ class HomeScreen(QWidget):
         self.setup_layout()
         self.add_static_cards()
         self.populate_modules_from_manager()
-        self.enable_drag_and_drop()
 
     def setup_layout(self):
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(20, 40, 20, 20)
+        main_layout.setContentsMargins(20, 60, 20, 20)
 
-        title_label = QLabel("Accueil")
+        # Titre centré en haut
+        title_label = QLabel(Settings.LABEL_HOME)
         title_label.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         title_label.setFont(QFont("Arial", 28, QFont.Bold))
+        title_label.setContentsMargins(0, 0, 0, 40)
         main_layout.addWidget(title_label)
+
+        # Layout englobant la grille pour la centrer horizontalement
+        grid_wrapper = QHBoxLayout()
+        grid_wrapper.setAlignment(Qt.AlignHCenter)
 
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(20)
         self.grid_layout.setAlignment(Qt.AlignTop)
-        main_layout.addLayout(self.grid_layout)
+
+        grid_wrapper.addLayout(self.grid_layout)
+        main_layout.addLayout(grid_wrapper)
+
         main_layout.addStretch()
-
         self.setLayout(main_layout)
-
-    def create_module_card(
-        self, name: str, icon_path: str, description: str, is_special: bool = False
-    ) -> QFrame:
-        # Crée une carte avec le nom, l'icône, la description, et optionnellement une étoile
-        card = QFrame()
-        card.setFixedSize(200, 200)
-
-        layout = QVBoxLayout()
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setAlignment(Qt.AlignCenter)
-
-        # Étoile
-        if not is_special:
-            star_label = QPushButton("☆")
-            star_label.setMaximumWidth(30)
-            star_label.setStyleSheet("border: none;")
-            layout.addWidget(star_label)
-        else:
-            star_label = QLabel("★")
-            star_label.setAlignment(Qt.AlignLeft)
-            layout.addWidget(star_label)
-
-        # Icône
-        icon_label = QLabel()
-        pixmap = QPixmap(icon_path).scaled(64, 64, Qt.KeepAspectRatio)
-        icon_label.setPixmap(pixmap)
-        icon_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(icon_label)
-
-        # Titre
-        name_label = QLabel(name)
-        name_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(name_label)
-
-        # Description
-        desc_label = QLabel(description)
-        desc_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(desc_label)
-
-        card.setLayout(layout)
-
-        # Style commun
-        card.setStyleSheet(
-            "border: 1px solid #aaa; border-radius: 5px; padding: 5px; color: white;"
-        )
-        return card
 
     def add_static_cards(self):
         # Appelle la méthode générique avec des valeurs fixes
         card = self.create_module_card(
             name="Vølund",
-            icon_path="assets/icons/volund.ico",
+            icon_path=Settings.DEFAULT_IMAGE_PNG,
             description="Ta prochaine application...",
             is_special=True,
         )
@@ -100,9 +65,29 @@ class HomeScreen(QWidget):
                 "description": "Module générique",
             },
             {
-                "name": "Module 2",
+                "name": "",
                 "icon": "assets/icons/module2.ico",
-                "description": "Autre module",
+                "description": "",
+            },
+            {
+                "name": "Module 1",
+                "icon": "assets/icons/module1.ico",
+                "description": "Module générique",
+            },
+            {
+                "name": "",
+                "icon": "assets/icons/module2.ico",
+                "description": "",
+            },
+            {
+                "name": "Module 1",
+                "icon": "assets/icons/module1.ico",
+                "description": "Module générique",
+            },
+            {
+                "name": "",
+                "icon": "assets/icons/module2.ico",
+                "description": "",
             },
         ]
 
@@ -115,23 +100,114 @@ class HomeScreen(QWidget):
             )
             self.grid_layout.addWidget(card, row, col)
             col += 1
-            if col > 2:
+            if col > 3:
                 col = 0
                 row += 1
 
-    def enable_drag_and_drop(self):
-        for i in range(self.grid_layout.count()):
-            item = self.grid_layout.itemAt(i).widget()
-            if i == 0:
-                continue  # Ne pas dragguer la carte spéciale
+    def create_module_card(
+        self, name: str, icon_path: str, description: str, is_special: bool = False
+    ) -> QFrame:
+        card = QFrame()
+        card.setFixedSize(200, 200)
 
-            item.setAcceptDrops(True)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setAlignment(Qt.AlignTop)
 
-            def start_drag(event, widget=item):
-                drag = QDrag(widget)
-                mime_data = QMimeData()
-                mime_data.setText(widget.objectName())
-                drag.setMimeData(mime_data)
-                drag.exec_()
+        # --- Étoile ---
+        star_widget = self.build_star_widget(is_special)
+        layout.addWidget(star_widget, alignment=Qt.AlignRight)
 
-            item.mousePressEvent = start_drag
+        # --- Titre ---
+        title_label = self.build_title_widget(name)
+        layout.addWidget(title_label)
+
+        # --- Icône ---
+        icon_label = self.build_icon_widget(icon_path)
+        layout.addWidget(icon_label, alignment=Qt.AlignHCenter)
+
+        # --- Description ---
+        desc_label = self.build_description_widget(description)
+        layout.addWidget(desc_label, alignment=Qt.AlignHCenter)
+
+        card.setLayout(layout)
+        card.setObjectName("cardStyle")
+
+        return card
+
+    def build_star_widget(self, is_special: bool) -> QWidget:
+        if is_special:
+            # Étoile statique pleine (ex : carte Vølund)
+            label = QLabel()
+            pixmap = QPixmap(Settings.FULL_STAR_PNG).scaled(
+                16, 16, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+            label.setPixmap(pixmap)
+            label.setAlignment(Qt.AlignRight)
+            return label
+        else:
+            # Étoile interactive (favori)
+            button = QPushButton()
+            button.setCheckable(True)
+            button.setChecked(False)  # plus tard : à relier à une config utilisateur
+            button.setMaximumWidth(30)
+            button.setStyleSheet("border: none;")
+
+            def update_icon():
+                icon_path = (
+                    Settings.FULL_STAR_PNG
+                    if button.isChecked()
+                    else Settings.EMPTY_STAR_PNG
+                )
+                button.setIcon(QIcon(icon_path))
+                button.setIconSize(QSize(16, 16))
+
+            # Initialisation + signal
+            update_icon()
+            button.clicked.connect(update_icon)
+
+            return button
+
+    def build_title_widget(self, name: str) -> QLabel:
+        # Vérifie si le nom est vide ou uniquement composé d'espaces
+        clean_name = name.strip() if name else ""
+        if not clean_name:
+            clean_name = Settings.LABEL_NO_TITLE
+
+        title = QLabel(clean_name)
+        title.setAlignment(Qt.AlignCenter)
+
+        return title
+
+    def build_icon_widget(self, icon_path: str) -> QLabel:
+        icon = QLabel()
+        icon.setFixedSize(80, 80)
+        icon.setAlignment(Qt.AlignCenter)
+
+        if not os.path.exists(icon_path) or not os.path.isfile(icon_path):
+            icon_path = Settings.DEFAULT_IMAGE_PNG
+
+        # Charge et scale l’image avec marges si nécessaire
+        pixmap = QPixmap(icon_path).scaled(
+            70, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+        icon.setPixmap(pixmap)
+
+        return icon
+
+    def build_description_widget(self, description: str) -> QLabel:
+        fallback = Settings.LABEL_NO_DESCRIPTION
+        clean_desc = description.strip() if description else ""
+        if not clean_desc:
+            clean_desc = fallback
+
+        # Troncature manuelle + points de suspension
+        max_chars = 100
+        if len(clean_desc) > max_chars:
+            clean_desc = clean_desc[: max_chars - 3].rstrip() + "..."
+
+        desc = QLabel(clean_desc)
+        desc.setAlignment(Qt.AlignCenter)
+        desc.setWordWrap(True)
+        desc.setFixedWidth(160)
+        return desc

@@ -84,25 +84,5 @@ class Sidebar(QFrame):
         self.setObjectName("Sidebar")
         self.setLayout(layout)
 
-        # Ajouter une bordure verticale claire à droite de la sidebar pour bien la distinguer du contenu
-        # (comme dans VS Code). Par exemple : 1px solid gris clair (#444 ou #555)
-        self.setStyleSheet("""
-            #Sidebar {
-                background-color: #2b2b2b;
-                border-right: 1px solid #666;
-            }
-
-            QPushButton {
-                border: none;
-                color: white;
-                padding-left: 5px;
-                padding-right: 5px;
-            }
-
-            QPushButton:hover {
-                background-color: #3c3c3c;
-            }
-        """)
-
     def get_buttons(self):
         return {"home": self.home_button, "settings": self.settings_button}

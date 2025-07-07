@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
         state = load_window_state()
         self.resize(state["width"], state["height"])
         self.move(state["x"], state["y"])
-
+        self.setStyleSheet(load_qss("assets/styles/default.qss"))
         # Créer le widget central et le layout horizontal
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -109,3 +109,8 @@ class MainWindow(QMainWindow):
         """
         self._save_timer.start()
         super().moveEvent(event)
+
+
+def load_qss(path: str) -> str:
+    with open(path, "r") as file:
+        return file.read()

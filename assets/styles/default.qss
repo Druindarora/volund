@@ -1,24 +1,24 @@
-/* default.qss */
+/* Style pour la barre latérale */
+#Sidebar {
+    background-color: #2b2b2b;
+    border-right: 1px solid #666;
+}
 
-QFrame.module-card {
-    border: 1px solid #ccc;
+/* Style pour les boutons de la sidebar */
+#Sidebar QPushButton {
+    border: none;
+    color: white;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+#Sidebar QPushButton:hover {
+    background-color: #3c3c3c;
+}
+
+#cardStyle{
+    border: 1px solid #aaa;
     border-radius: 5px;
     padding: 5px;
-    background-color: #f5f5f5;
-    color: #000;
-}
-
-QFrame.module-card[special="true"] {
-    border: 1px solid #999;
-}
-
-QLabel#module-title {
-    font-weight: bold;
-    font-size: 14px;
-}
-
-QLabel#module-description {
-    color: #444;
-    font-size: 12px;
-    padding-top: 5px;
+    color: white;
 }

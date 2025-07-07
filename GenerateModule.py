@@ -1,8 +1,14 @@
 import os
 import sys
 
-MODULES_BASE = os.path.join("Volund", "src", "modules")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MODULES_BASE = os.path.join(SCRIPT_DIR, "src", "modules")
 SUBFOLDERS = ["services", "ui", "db", "tests", "assets"]
+
+SRC_PATH = os.path.join(SCRIPT_DIR, "src")
+sys.path.insert(0, SRC_PATH)
+
+from models.module_info import ModuleInfo
 
 
 def create_folder_with_init(path):
@@ -11,7 +17,7 @@ def create_folder_with_init(path):
     open(init_file, "a").close()
 
 
-def create_module(module_name, description="", version="0.0.0"):
+def create_module(module_name, description=""):
     module_path = os.path.join(MODULES_BASE, module_name)
 
     if os.path.exists(module_path):
@@ -25,22 +31,25 @@ def create_module(module_name, description="", version="0.0.0"):
         sub_path = os.path.join(module_path, sub)
         create_folder_with_init(sub_path)
 
-    # Génération du __init__.py principal avec métadonnées
+    # Création de l'objet ModuleInfo avec les infos de base
+    module_info = ModuleInfo(
+        name=module_name, description=description, icon_path=f"assets/{module_name}.png"
+    )
+
+    # Écriture dans __init__.py
     init_file_path = os.path.join(module_path, "__init__.py")
     with open(init_file_path, "w", encoding="utf-8") as f:
-        f.write(f"""# __init__.py – Métadonnées du module {module_name}
+        f.write(f"# __init__.py – Métadonnées du module {module_name}\n\n")
+        for key, value in module_info.__dict__.items():
+            f.write(f"{key} = {repr(value)}\n")
 
-name = "{module_name}"
-version = "{version}"
-description = "{description}"
-icon_path = "assets/{module_name}.png"
+        f.write(
+            "\n\ndef launch(parent=None):\n"
+            "    # Fonction à implémenter : retourne un QWidget pour lancer le module\n"
+            "    return None\n"
+        )
 
-def launch(parent=None):
-    # Fonction à implémenter : retourne un QWidget pour lancer le module
-    return None
-""")
-
-    print(f"✅ Module '{module_name}' créé avec métadonnées par défaut.")
+    print(f"✅ Module '{module_name}' créé avec toutes les métadonnées par défaut.")
 
 
 def main():
