@@ -1,7 +1,24 @@
+import io
 import os
 import subprocess
 import sys
 import time
+
+# Forcer la sortie console en UTF-8 (s'il est compatible)
+if sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
+USE_EMOJI = "TERM_PROGRAM" in os.environ or "WT_SESSION" in os.environ
+
+
+def safe_print(msg):
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(msg.encode("ascii", "replace").decode())
+
+
+safe_print(f"{'🔍' if USE_EMOJI else '[INFO]'} Python utilisé : {sys.executable}")
 
 print(f"🔍 Python utilisé : {sys.executable}")
 
@@ -30,15 +47,25 @@ class RestartOnChangeHandler(FileSystemEventHandler):
 
         if os.path.exists(RUFF_PATH):
             print("🧹 Nettoyage avec Ruff...")
-            subprocess.run([RUFF_PATH, "check", SRC_DIR, "--fix"])
+            subprocess.run(
+                [RUFF_PATH, "check", SRC_DIR, "--fix"],
+                encoding="utf-8",
+                errors="ignore",
+            )
         else:
-            print("⚠️ Ruff non trouvé dans .venv\\Scripts\\. Installation automatique en cours...")
+            print(
+                "⚠️ Ruff non trouvé dans .venv\\Scripts\\. Installation automatique en cours..."
+            )
             subprocess.run([sys.executable, "-m", "pip", "install", "ruff"])
 
             # Revérifie juste après
             if os.path.exists(RUFF_PATH):
                 print("✅ Ruff installé avec succès.")
-                subprocess.run([RUFF_PATH, "check", SRC_DIR, "--fix"])
+                subprocess.run(
+                    [RUFF_PATH, "check", SRC_DIR, "--fix"],
+                    encoding="utf-8",
+                    errors="ignore",
+                )
             else:
                 print("❌ Échec d'installation de Ruff. Nettoyage ignoré.")
 
@@ -46,11 +73,11 @@ class RestartOnChangeHandler(FileSystemEventHandler):
         self.process = subprocess.Popen([sys.executable, SCRIPT_PATH])
 
     def on_modified(self, event):
-        if event.src_path.endswith(".py"):
+        if isinstance(event.src_path, str) and event.src_path.endswith(".py"):
             self.start()
 
     def on_created(self, event):
-        if event.src_path.endswith(".py"):
+        if isinstance(event.src_path, str) and event.src_path.endswith(".py"):
             self.start()
 
     def cleanup(self):

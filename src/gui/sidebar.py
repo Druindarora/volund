@@ -68,7 +68,7 @@ class Sidebar(QFrame):
         self.home_button.setIcon(QIcon(ICONS["home"]))
         self.home_button.setIconSize(QSize(35, 35))
         self.home_button.setFixedSize(40, 40)
-        layout.addWidget(self.home_button, alignment=Qt.AlignHCenter)
+        layout.addWidget(self.home_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Ajouter un stretch pour pousser le reste en bas
         layout.addStretch()
@@ -78,7 +78,7 @@ class Sidebar(QFrame):
         self.settings_button.setIcon(QIcon(ICONS["settings"]))
         self.settings_button.setIconSize(QSize(30, 30))
         self.settings_button.setFixedSize(40, 40)
-        layout.addWidget(self.settings_button, alignment=Qt.AlignHCenter)
+        layout.addWidget(self.settings_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Appliquer le layout à la Sidebar
         self.setObjectName("Sidebar")

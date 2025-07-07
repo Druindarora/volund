@@ -28,18 +28,20 @@ class HomeScreen(QWidget):
 
         # Titre centré en haut
         title_label = QLabel(Settings.LABEL_HOME)
-        title_label.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-        title_label.setFont(QFont("Arial", 28, QFont.Bold))
+        title_label.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
+        )
+        title_label.setFont(QFont("Arial", 28, QFont.Weight.Bold))
         title_label.setContentsMargins(0, 0, 0, 40)
         main_layout.addWidget(title_label)
 
         # Layout englobant la grille pour la centrer horizontalement
         grid_wrapper = QHBoxLayout()
-        grid_wrapper.setAlignment(Qt.AlignHCenter)
+        grid_wrapper.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(20)
-        self.grid_layout.setAlignment(Qt.AlignTop)
+        self.grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         grid_wrapper.addLayout(self.grid_layout)
         main_layout.addLayout(grid_wrapper)
@@ -112,11 +114,11 @@ class HomeScreen(QWidget):
 
         layout = QVBoxLayout()
         layout.setContentsMargins(5, 5, 5, 5)
-        layout.setAlignment(Qt.AlignTop)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # --- Étoile ---
         star_widget = self.build_star_widget(is_special)
-        layout.addWidget(star_widget, alignment=Qt.AlignRight)
+        layout.addWidget(star_widget, alignment=Qt.AlignmentFlag.AlignRight)
 
         # --- Titre ---
         title_label = self.build_title_widget(name)
@@ -124,11 +126,11 @@ class HomeScreen(QWidget):
 
         # --- Icône ---
         icon_label = self.build_icon_widget(icon_path)
-        layout.addWidget(icon_label, alignment=Qt.AlignHCenter)
+        layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # --- Description ---
         desc_label = self.build_description_widget(description)
-        layout.addWidget(desc_label, alignment=Qt.AlignHCenter)
+        layout.addWidget(desc_label, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         card.setLayout(layout)
         card.setObjectName("cardStyle")
@@ -140,10 +142,13 @@ class HomeScreen(QWidget):
             # Étoile statique pleine (ex : carte Vølund)
             label = QLabel()
             pixmap = QPixmap(Settings.FULL_STAR_PNG).scaled(
-                16, 16, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                16,
+                16,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
             )
             label.setPixmap(pixmap)
-            label.setAlignment(Qt.AlignRight)
+            label.setAlignment(Qt.AlignmentFlag.AlignRight)
             return label
         else:
             # Étoile interactive (favori)
@@ -175,21 +180,24 @@ class HomeScreen(QWidget):
             clean_name = Settings.LABEL_NO_TITLE
 
         title = QLabel(clean_name)
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         return title
 
     def build_icon_widget(self, icon_path: str) -> QLabel:
         icon = QLabel()
         icon.setFixedSize(80, 80)
-        icon.setAlignment(Qt.AlignCenter)
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         if not os.path.exists(icon_path) or not os.path.isfile(icon_path):
             icon_path = Settings.DEFAULT_IMAGE_PNG
 
         # Charge et scale l’image avec marges si nécessaire
         pixmap = QPixmap(icon_path).scaled(
-            70, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            70,
+            70,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
         )
         icon.setPixmap(pixmap)
 
@@ -207,7 +215,7 @@ class HomeScreen(QWidget):
             clean_desc = clean_desc[: max_chars - 3].rstrip() + "..."
 
         desc = QLabel(clean_desc)
-        desc.setAlignment(Qt.AlignCenter)
+        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc.setWordWrap(True)
         desc.setFixedWidth(160)
         return desc
