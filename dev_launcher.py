@@ -4,11 +4,17 @@ import subprocess
 import sys
 import time
 
-# Forcer la sortie console en UTF-8 (s'il est compatible)
-if sys.stdout.encoding.lower() != "utf-8":
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
+# Force UTF-8 sur la sortie console si nécessaire
+if sys.stdout.encoding is None or sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 USE_EMOJI = "TERM_PROGRAM" in os.environ or "WT_SESSION" in os.environ
+SRC_DIR = "src"
+SCRIPT_PATH = os.path.join(SRC_DIR, "main.py")
+RUFF_PATH = os.path.join(os.path.dirname(sys.executable), "ruff.exe")
 
 
 def safe_print(msg):
@@ -19,18 +25,6 @@ def safe_print(msg):
 
 
 safe_print(f"{'🔍' if USE_EMOJI else '[INFO]'} Python utilisé : {sys.executable}")
-
-print(f"🔍 Python utilisé : {sys.executable}")
-
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
-
-SCRIPT_PATH = os.path.join("src", "main.py")
-SRC_DIR = "src"
-
-# Chemin vers ruff dans l’environnement virtuel
-# RUFF_PATH = os.path.join(os.environ["VIRTUAL_ENV"], "Scripts", "ruff.exe")
-RUFF_PATH = os.path.join(os.path.dirname(sys.executable), "ruff.exe")
 print(f"🧪 Ruff path prévu : {RUFF_PATH}")
 print(f"🧪 Ruff existe ? {'✅' if os.path.exists(RUFF_PATH) else '❌'}")
 
@@ -44,7 +38,9 @@ class RestartOnChangeHandler(FileSystemEventHandler):
         if self.process:
             print("🔁 Redémarrage de l'application...")
             self.process.kill()
+            self.process.wait()  # Attend que le processus soit bien terminé
 
+        # ⚙️ Nettoyage avec Ruff si disponible
         if os.path.exists(RUFF_PATH):
             print("🧹 Nettoyage avec Ruff...")
             subprocess.run(
@@ -53,24 +49,24 @@ class RestartOnChangeHandler(FileSystemEventHandler):
                 errors="ignore",
             )
         else:
-            print(
-                "⚠️ Ruff non trouvé dans .venv\\Scripts\\. Installation automatique en cours..."
-            )
+            print("⚠️ Ruff non trouvé. Installation...")
             subprocess.run([sys.executable, "-m", "pip", "install", "ruff"])
-
-            # Revérifie juste après
             if os.path.exists(RUFF_PATH):
-                print("✅ Ruff installé avec succès.")
                 subprocess.run(
                     [RUFF_PATH, "check", SRC_DIR, "--fix"],
                     encoding="utf-8",
                     errors="ignore",
                 )
             else:
-                print("❌ Échec d'installation de Ruff. Nettoyage ignoré.")
+                print("❌ Échec de l'installation de Ruff.")
 
-        print("🚀 Lancement de l'application...")
-        self.process = subprocess.Popen([sys.executable, SCRIPT_PATH])
+        # 🚀 Lancement du script avec affichage direct dans la console
+        print("🚀 Lancement de l'application...\n")
+        self.process = subprocess.Popen(
+            [sys.executable, SCRIPT_PATH],
+            stdout=sys.stdout,  # Redirige vers la console actuelle
+            stderr=sys.stderr,  # Idem pour les erreurs
+        )
 
     def on_modified(self, event):
         if isinstance(event.src_path, str) and event.src_path.endswith(".py"):
@@ -84,6 +80,7 @@ class RestartOnChangeHandler(FileSystemEventHandler):
         if self.process:
             print("🛑 Fermeture de l'application...")
             self.process.kill()
+            self.process.wait()
 
 
 def main():

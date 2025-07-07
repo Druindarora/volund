@@ -6,7 +6,12 @@
 # La position et la taille de la fenêtre sont restaurées automatiquement
 # L’état est sauvegardé en différé lorsqu’on déplace ou redimensionne la fenêtre
 
+import io
 import os
+import sys
+
+if sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon

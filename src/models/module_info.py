@@ -12,3 +12,16 @@ class ModuleInfo:
     favorite: bool = False
     mobile: bool = False
     path: str = ""
+
+
+def as_dict(self) -> dict:
+    return {
+        "name": self.name,
+        "version": self.version,
+        "description": self.description,
+        "icon_path": self.icon_path,
+        "tags": self.tags,
+        "favorite": self.favorite,
+        "mobile": self.mobile,
+        "path": self.path,
+    }

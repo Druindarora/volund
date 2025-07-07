@@ -9,6 +9,7 @@ class Settings:
     # Images
     DEFAULT_IMAGE_PNG: str = "assets/images/volund.png"
     SETTINGS_IMAGE_PNG: str = "assets/images/settings.png"
+    IMG_IN_PROGRESS: str = "assets/images/in_progress.png"
     EMPTY_STAR_PNG: str = "assets/images/empty_star.png"
     FULL_STAR_PNG: str = "assets/images/full_star.png"
 

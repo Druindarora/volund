@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.module_manager import ModuleManager
 from utils.settings import Settings
 
 
@@ -53,52 +54,23 @@ class HomeScreen(QWidget):
         # Appelle la méthode générique avec des valeurs fixes
         card = self.create_module_card(
             name="Vølund",
-            icon_path=Settings.DEFAULT_IMAGE_PNG,
+            icon_path=Settings.IMG_IN_PROGRESS,
             description="Ta prochaine application...",
             is_special=True,
         )
         self.grid_layout.addWidget(card, 0, 0)
 
     def populate_modules_from_manager(self):
-        modules = [
-            {
-                "name": "Module 1",
-                "icon": "assets/icons/module1.ico",
-                "description": "Module générique",
-            },
-            {
-                "name": "",
-                "icon": "assets/icons/module2.ico",
-                "description": "",
-            },
-            {
-                "name": "Module 1",
-                "icon": "assets/icons/module1.ico",
-                "description": "Module générique",
-            },
-            {
-                "name": "",
-                "icon": "assets/icons/module2.ico",
-                "description": "",
-            },
-            {
-                "name": "Module 1",
-                "icon": "assets/icons/module1.ico",
-                "description": "Module générique",
-            },
-            {
-                "name": "",
-                "icon": "assets/icons/module2.ico",
-                "description": "",
-            },
-        ]
+        manager = ModuleManager()
+        manager.load_modules()
+        modules = manager.get_all_modules()
 
         row, col = 0, 1
         for module in modules:
             card = self.create_module_card(
-                name=module["name"],
-                icon_path=module["icon"],
-                description=module["description"],
+                name=module.name,
+                icon_path=module.icon_path,
+                description=module.description,
             )
             self.grid_layout.addWidget(card, row, col)
             col += 1

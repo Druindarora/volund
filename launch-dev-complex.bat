@@ -103,7 +103,7 @@ goto CODE_DONE
 if exist .venv\Scripts\python.exe (
     echo [PY] Environnement Python détecté.
 
-    .venv\Scripts\python.exe dev_launcher.py >> %LOGFILE% 2>&1
+    .venv\Scripts\python.exe dev_launcher.py
 
     if errorlevel 1 (
         goto PY_FAIL
