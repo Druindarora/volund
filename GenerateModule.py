@@ -17,7 +17,7 @@ def create_folder_with_init(path):
     open(init_file, "a").close()
 
 
-def create_module(module_name, description=""):
+def create_module(module_name: str, description: str = ""):
     module_path = os.path.join(MODULES_BASE, module_name)
 
     if os.path.exists(module_path):
@@ -40,7 +40,7 @@ def create_module(module_name, description=""):
     module_info = ModuleInfo(
         name=module_name,
         description=description,
-        icon_path=f"assets/{module_name}.png",
+        icon_path=f"assets/images/{module_name.upper()}.png",
     )
 
     # Écriture du __init__.py complet
