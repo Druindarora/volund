@@ -3,7 +3,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODULES_BASE = os.path.join(SCRIPT_DIR, "src", "modules")
-SUBFOLDERS = ["services", "ui", "db", "tests", "assets"]
+SUBFOLDERS = ["core", "services", "ui", "db", "tests", "assets"]
 
 SRC_PATH = os.path.join(SCRIPT_DIR, "src")
 sys.path.insert(0, SRC_PATH)
