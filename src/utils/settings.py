@@ -2,6 +2,8 @@ class Settings:
     # Texte
     APP_NAME: str = "Vølund"
     VERSION: str = "0.1.0"
+    # Valeur par défaut : "prod"
+    ENV = "dev"  # ⬅️ tu peux passer ça à "prod" pour désactiver les features dev
 
     # Icônes
     DEFAULT_LOGO_ICON: str = "assets/icons/volund.ico"

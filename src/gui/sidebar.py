@@ -1,49 +1,3 @@
-# sidebar.py
-
-# Ce fichier définit une Sidebar verticale minimaliste pour l'application Vølund.
-# L'interface est développée avec **PySide6 uniquement** (pas PyQt5 ni PyQt6).
-# Il ne faut **importer que depuis PySide6**, sans dépendances tierces.
-
-# 🧱 Objectif :
-# Créer une classe Sidebar basée sur QFrame, affichée à gauche de la fenêtre principale.
-# Elle contient :
-# - un bouton "home" (🏠) en haut
-# - une zone centrale vide pour les futurs modules favoris
-# - un bouton "settings" (⚙️) en bas
-
-# 📐 Contraintes visuelles :
-# - Disposition verticale avec QVBoxLayout
-# - Largeur fixe réduite (50 px) pour ressembler à une barre latérale type IDE
-# - Boutons centrés horizontalement
-# - Un stretch vertical pour séparer le haut et le bas
-
-# ✅ Comportement actuel :
-# - Chaque bouton est un QPushButton avec un emoji comme texte
-# - Le layout est sans marges ni espacement
-# - Aucun signal n’est connecté pour l’instant (statique)
-
-# 🎨 Style :
-# - Fond gris foncé (`#2b2b2b`)
-# - Bordure verticale droite (1px) en gris clair (`#666`)
-# - Boutons blancs avec léger padding horizontal
-# - Hover discret (`#3c3c3c`)
-# - Le style est appliqué via un `objectName` (#Sidebar) pour cibler précisément le widget
-
-# 🧩 Structure interne :
-# - `self.home_button` (🏠) placé en haut
-# - `layout.addStretch()` pour séparer visuellement
-# - `self.settings_button` (⚙️) placé en bas
-# - Accès possible via la méthode get_buttons()
-
-# 📂 À venir :
-# - Ajout dynamique des modules favoris dans la zone centrale
-# - Gestion des états (actif, cliqué, badge)
-
-# ⚠️ Ne pas utiliser PyQt5 ni PyQt6
-# ⚠️ Ne pas importer de bibliothèques externes
-# Le code doit rester simple, modulaire, et maintenable.
-
-
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
@@ -53,38 +7,64 @@ from gui.images_paths import ICONS
 
 
 class Sidebar(QFrame):
-    def __init__(self, parent=None):
+    def __init__(self, on_module_clicked=None, parent=None):
         super().__init__(parent)
+        self.on_module_clicked = on_module_clicked
 
-        # Définir la largeur fixe de la Sidebar
+        # Initialisation des propriétés de base
+        self._initialize_properties()
+
+        # Création des boutons principaux
+        self._create_main_buttons()
+
+        # Configuration de la zone des favoris
+        self._setup_favorites_area()
+
+        # Configuration du layout principal
+        self._setup_main_layout()
+
+    def _initialize_properties(self):
+        """Initialise les propriétés de base de la Sidebar."""
         self.setFixedWidth(50)
+        self.setObjectName("Sidebar")
 
-        # Créer le layout principal vertical
+    def _create_main_buttons(self):
+        """Crée les boutons principaux (Home et Settings)."""
+        self.home_button = QPushButton()
+        if callable(self.on_module_clicked):
+            self.home_button.clicked.connect(lambda: self.on_module_clicked("home"))  # type: ignore
+
+        self.home_button.setIcon(QIcon(ICONS["home"]))
+        self.home_button.setIconSize(QSize(35, 35))
+        self.home_button.setFixedSize(40, 40)
+
+        self.settings_button = QPushButton()
+        self.settings_button.setIcon(QIcon(ICONS["settings"]))
+        self.settings_button.setIconSize(QSize(30, 30))
+        self.settings_button.setFixedSize(40, 40)
+
+    def _setup_favorites_area(self):
+        """Configure la zone des favoris."""
+        self.favorites_layout = QVBoxLayout()
+        self.favorites_layout.setContentsMargins(0, 0, 0, 0)
+        self.favorites_layout.setSpacing(0)
+
+        self.favorites_container = QFrame()
+        self.favorites_container.setObjectName("FavoritesContainer")
+        self.favorites_container.setContentsMargins(0, 0, 0, 0)
+        self.favorites_container.setStyleSheet("background: transparent;")
+        self.favorites_container.setLayout(self.favorites_layout)
+
+    def _setup_main_layout(self):
+        """Configure le layout principal de la Sidebar."""
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         # Ajouter le bouton Home en haut
-        self.home_button = QPushButton()
-        self.home_button.setIcon(QIcon(ICONS["home"]))
-        self.home_button.setIconSize(QSize(35, 35))
-        self.home_button.setFixedSize(40, 40)
         layout.addWidget(self.home_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        # Zone centrale pour les favoris
-        self.favorites_layout = QVBoxLayout()
-
-        # Créer un widget conteneur pour les favoris
-        self.favorites_container = QFrame()
-        self.favorites_container.setObjectName("FavoritesContainer")
-        self.favorites_container.setContentsMargins(0, 0, 0, 0)
-        self.favorites_container.setStyleSheet("background: transparent;")
-
-        self.favorites_layout = QVBoxLayout()
-        self.favorites_layout.setContentsMargins(0, 0, 0, 0)
-        self.favorites_layout.setSpacing(0)
-
-        self.favorites_container.setLayout(self.favorites_layout)
+        # Ajouter la zone des favoris
         layout.insertWidget(
             1, self.favorites_container, alignment=Qt.AlignmentFlag.AlignTop
         )
@@ -93,14 +73,9 @@ class Sidebar(QFrame):
         layout.addStretch()
 
         # Ajouter le bouton Settings en bas
-        self.settings_button = QPushButton()
-        self.settings_button.setIcon(QIcon(ICONS["settings"]))
-        self.settings_button.setIconSize(QSize(30, 30))
-        self.settings_button.setFixedSize(40, 40)
         layout.addWidget(self.settings_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Appliquer le layout à la Sidebar
-        self.setObjectName("Sidebar")
         self.setLayout(layout)
 
     def get_buttons(self):
@@ -110,24 +85,45 @@ class Sidebar(QFrame):
         self.refresh()
 
     def refresh(self):
-        # Vider la zone des favoris
+        """Met à jour la liste des favoris dans la Sidebar."""
+        self._clear_favorites()
+        favorite_modules = self._load_favorite_modules()
+        self._populate_favorites(favorite_modules)
+
+    def _clear_favorites(self):
+        """Vide la zone des favoris."""
         while self.favorites_layout.count():
             item = self.favorites_layout.takeAt(0)
             widget = item.widget()
             if widget:
                 widget.deleteLater()
 
-        # Recharger les modules favoris
+    def _load_favorite_modules(self):
+        """Charge les modules favoris depuis le gestionnaire."""
         manager = ModuleManager()
         manager.load_modules()
-        favorite_modules = [m for m in manager.get_all_modules() if m.favorite]
+        return [m for m in manager.get_all_modules() if m.favorite]
 
+    def _populate_favorites(self, favorite_modules):
+        """Ajoute les boutons des modules favoris à la zone des favoris."""
         for module in favorite_modules:
-            button = QPushButton()
-            button.setIcon(QIcon(module.icon_path))
-            button.setIconSize(QSize(30, 30))
-            button.setFixedSize(40, 40)
-            button.setToolTip(module.name)
+            button = self._create_favorite_button(module)
             self.favorites_layout.addWidget(
                 button, alignment=Qt.AlignmentFlag.AlignHCenter
             )
+
+    def _create_favorite_button(self, module):
+        """Crée un bouton pour un module favori."""
+        button = QPushButton()
+        button.setIcon(QIcon(module.icon_path))
+        button.setIconSize(QSize(30, 30))
+        button.setFixedSize(40, 40)
+        button.setToolTip(module.name)
+
+        # Connecter le clic du bouton au callback si défini
+        if callable(self.on_module_clicked):
+            button.clicked.connect(
+                lambda _, name=module.name.lower(): self.on_module_clicked(name)  # type: ignore
+            )
+
+        return button

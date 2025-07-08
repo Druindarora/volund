@@ -18,12 +18,21 @@ from utils.module_state import set_module_favorite
 from utils.settings import Settings
 
 
+class ClickableFrame(QFrame):
+    clicked = Signal()
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        self.clicked.emit()
+
+
 class HomeScreen(QWidget):
     # Ajout du signal pour les favoris
     module_favorited = Signal(str, bool)
 
-    def __init__(self):
+    def __init__(self, main_window):
         super().__init__()
+        self.main_window = main_window
         self.setup_layout()
         self.add_static_cards()
         self.populate_modules_from_manager()
@@ -67,10 +76,18 @@ class HomeScreen(QWidget):
         self.grid_layout.addWidget(card, 0, 0)
 
     def populate_modules_from_manager(self):
+        """Récupère les modules et les ajoute à la grille."""
+        modules = self._get_modules_from_manager()
+        self._add_modules_to_grid(modules)
+
+    def _get_modules_from_manager(self):
+        """Récupère les modules depuis le gestionnaire."""
         manager = ModuleManager()
         manager.load_modules()
-        modules = manager.get_all_modules()
+        return manager.get_all_modules()
 
+    def _add_modules_to_grid(self, modules):
+        """Ajoute les modules à la grille."""
         row, col = 0, 1
         for module in modules:
             card = self.create_module_card(module)
@@ -81,33 +98,60 @@ class HomeScreen(QWidget):
                 row += 1
 
     def create_module_card(self, module):
-        card = QFrame()
-        card.setFixedSize(200, 200)
+        card = self._create_clickable_frame()
+        layout = self._configure_card_layout(card)
 
+        # Ajouter les widgets au layout
+        self._add_star_widget(layout, module)
+        self._add_title_widget(layout, module)
+        self._add_icon_widget(layout, module)
+        self._add_description_widget(layout, module)
+
+        # Connecter les signaux spécifiques
+        self._connect_signals(card, module)
+        card.setObjectName("cardStyle")
+        return card
+
+    def _create_clickable_frame(self):
+        """Crée un ClickableFrame pour un module."""
+        card = ClickableFrame()
+        card.setFixedSize(200, 200)
+        return card
+
+    def _configure_card_layout(self, card):
+        """Configure le layout vertical pour un ClickableFrame."""
         layout = QVBoxLayout()
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        card.setLayout(layout)
+        return layout
 
-        # --- Étoile ---
+    def _add_star_widget(self, layout, module):
+        """Ajoute le widget étoile au layout."""
         star_widget = self.build_star_widget(module.name, module.favorite)
         layout.addWidget(star_widget, alignment=Qt.AlignmentFlag.AlignRight)
 
-        # --- Titre ---
+    def _add_title_widget(self, layout, module):
+        """Ajoute le widget titre au layout."""
         title_label = self.build_title_widget(module.name)
         layout.addWidget(title_label)
 
-        # --- Icône ---
+    def _add_icon_widget(self, layout, module):
+        """Ajoute le widget icône au layout."""
         icon_label = self.build_icon_widget(module.icon_path)
         layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        # --- Description ---
+    def _add_description_widget(self, layout, module):
+        """Ajoute le widget description au layout."""
         desc_label = self.build_description_widget(module.description)
         layout.addWidget(desc_label, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        card.setLayout(layout)
-        card.setObjectName("cardStyle")
-
-        return card
+    def _connect_signals(self, card, module):
+        """Connecte les signaux spécifiques pour un module."""
+        if module.name.lower() == "parlia":
+            card.clicked.connect(
+                lambda: self.main_window.handle_sidebar_click("parlia")
+            )
 
     def build_star_widget(self, module_name: str, default_fav: bool) -> QWidget:
         button = QPushButton()
