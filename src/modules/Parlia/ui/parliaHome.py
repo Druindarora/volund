@@ -1,26 +1,57 @@
-# 📄 Page d’accueil du module Parlia
-# Créer une fonction `createParliaHome(main_window: QMainWindow)` qui renvoie un QWidget
-# Ce QWidget contiendra simplement un QLabel avec le texte "Bienvenue dans Parlia"
-# Utiliser une mise en page verticale centrée (QVBoxLayout)
-# Ce composant doit pouvoir être affiché dans le `centralWidget` de MainWindow
-
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QMainWindow, QVBoxLayout, QWidget
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QFrame,
+    QLabel,
+    QMainWindow,
+    QVBoxLayout,
+    QWidget,
+)
+
+from modules.parlia import ModuleInfo
 
 
-def createParliaHome(main_window: QMainWindow) -> QWidget:
-    # Créer un widget principal
-    parlia_home_widget = QWidget(main_window)
+class ParliaHome(QWidget):
+    def __init__(self, main_window: QMainWindow):
+        super().__init__(main_window)
+        self.main_window = main_window
+        self._build_ui()
 
-    # Créer un QLabel avec le texte "Bienvenue dans Parlia"
-    label = QLabel("Bienvenue dans Parlia", parlia_home_widget)
-    label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    def _build_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(20)
 
-    # Configurer une mise en page verticale
-    layout = QVBoxLayout()
-    layout.addWidget(label)
+        layout.addWidget(self._create_title())
+        layout.addWidget(self._create_separator())
+        layout.addWidget(self._create_settings_block())
 
-    # Appliquer la mise en page au widget
-    parlia_home_widget.setLayout(layout)
+        layout.addStretch()
+        self.setLayout(layout)
 
-    return parlia_home_widget
+    def _create_title(self) -> QLabel:
+        title = QLabel(f"Bienvenue dans {ModuleInfo.name}")
+        title.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        title.setFont(QFont("Arial", 28, QFont.Weight.Bold))
+        title.setContentsMargins(0, 0, 0, 20)
+        return title
+
+    def _create_separator(self) -> QFrame:
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
+        line.setStyleSheet("color: #666666; background-color: #666666; height: 1px;")
+        return line
+
+    def _create_settings_block(self) -> QWidget:
+        # Bloc placeholder pour les futurs paramètres (ex: choix du modèle Whisper)
+        container = QWidget()
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        label = QLabel("⚙️ Paramètres Whisper (à venir)")
+        label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
+        layout.addWidget(label)
+
+        container.setLayout(layout)
+        return container

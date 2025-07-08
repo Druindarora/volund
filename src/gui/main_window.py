@@ -4,7 +4,7 @@ import io
 import os
 import sys
 
-from modules.parlia.ui.parliaHome import createParliaHome
+from modules.parlia.ui.parliaHome import ParliaHome
 
 if sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
         Ajoutez de nouveaux modules ici en les associant à leur fonction de chargement.
         """
         module_switch = {
-            "parlia": lambda: self.content_layout.addWidget(createParliaHome(self)),
+            "parlia": lambda: self.content_layout.addWidget(ParliaHome(self)),
             "home": self._create_home,
         }
 
