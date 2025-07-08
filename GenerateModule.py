@@ -18,7 +18,8 @@ def create_folder_with_init(path):
 
 
 def create_module(module_name: str, description: str = ""):
-    module_path = os.path.join(MODULES_BASE, module_name)
+    module_name_lower = module_name.lower()
+    module_path = os.path.join(MODULES_BASE, module_name_lower)
 
     if os.path.exists(module_path):
         print(f"⚠️ Le module '{module_name}' existe déjà. Abandon.")
@@ -27,7 +28,7 @@ def create_module(module_name: str, description: str = ""):
     print(f"🚀 Création du module : {module_name}")
     os.makedirs(module_path, exist_ok=True)
 
-    # 💡 Création d'un README.md vide dans le module
+    # 💡 README.md vide
     readme_path = os.path.join(module_path, "README.md")
     with open(readme_path, "w", encoding="utf-8") as readme_file:
         readme_file.write("")
@@ -36,21 +37,20 @@ def create_module(module_name: str, description: str = ""):
         sub_path = os.path.join(module_path, sub)
         create_folder_with_init(sub_path)
 
-    # Création de l'objet ModuleInfo avec les infos de base
+    # Création de ModuleInfo avec nom majuscule mais chemins en minuscule
     module_info = ModuleInfo(
-        name=module_name,
+        name=module_name,  # Nom avec majuscule (nom propre)
         description=description,
-        icon_path=f"assets/images/{module_name.upper()}.png",
+        icon_path=f"assets/images/{module_name_lower}.png",  # icône en minuscule
     )
 
     # Écriture du __init__.py complet
     init_file_path = os.path.join(module_path, "__init__.py")
     with open(init_file_path, "w", encoding="utf-8") as f:
         f.write(f"# __init__.py – Métadonnées du module {module_name}\n\n")
-        relative_import = "from models.module_info import ModuleInfo as BaseModuleInfo"
-        f.write(relative_import + "\n\n")
+        f.write("from models.module_info import ModuleInfo as BaseModuleInfo\n\n")
 
-        # Variables individuelles (lisibles et modifiables à la main)
+        # Variables individuelles
         for key, value in module_info.__dict__.items():
             f.write(f"{key} = {repr(value)}\n")
 
@@ -61,7 +61,7 @@ def create_module(module_name: str, description: str = ""):
             "    return None\n\n"
         )
 
-        # Instanciation de l’objet attendu
+        # Instanciation de l’objet ModuleInfo
         f.write("ModuleInfo = BaseModuleInfo(\n")
         for key in module_info.__dict__.keys():
             f.write(f"    {key}={key},\n")

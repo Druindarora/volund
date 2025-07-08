@@ -106,8 +106,7 @@ class Sidebar(QFrame):
     def get_buttons(self):
         return {"home": self.home_button, "settings": self.settings_button}
 
-    def update_favorites(self, module_name: str, is_favorite: bool):
-        print(f"[Sidebar] Mise à jour : {module_name} -> favori={is_favorite}")
+    def update_favorites(self):
         self.refresh()
 
     def refresh(self):

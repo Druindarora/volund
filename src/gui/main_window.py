@@ -123,7 +123,7 @@ class MainWindow(QMainWindow):
         """
         Gère les changements d'état de favori d'un module.
         """
-        self.sidebar.update_favorites(module_name, is_favorite)
+        self.sidebar.update_favorites()
 
 
 def load_qss(path: str) -> str:
