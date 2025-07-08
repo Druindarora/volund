@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QFont, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
@@ -13,10 +13,15 @@ from PySide6.QtWidgets import (
 )
 
 from core.module_manager import ModuleManager
+from models.module_info import ModuleInfo
+from utils.module_state import set_module_favorite
 from utils.settings import Settings
 
 
 class HomeScreen(QWidget):
+    # Ajout du signal pour les favoris
+    module_favorited = Signal(str, bool)
+
     def __init__(self):
         super().__init__()
         self.setup_layout()
@@ -51,13 +56,14 @@ class HomeScreen(QWidget):
         self.setLayout(main_layout)
 
     def add_static_cards(self):
-        # Appelle la méthode générique avec des valeurs fixes
-        card = self.create_module_card(
+        # Création d'un module fictif pour la carte spéciale "Vølund"
+        volund_module = ModuleInfo(
             name="Vølund",
             icon_path=Settings.IMG_IN_PROGRESS,
             description="Ta prochaine application...",
-            is_special=True,
+            favorite=True,
         )
+        card = self.create_module_card(volund_module)
         self.grid_layout.addWidget(card, 0, 0)
 
     def populate_modules_from_manager(self):
@@ -67,20 +73,14 @@ class HomeScreen(QWidget):
 
         row, col = 0, 1
         for module in modules:
-            card = self.create_module_card(
-                name=module.name,
-                icon_path=module.icon_path,
-                description=module.description,
-            )
+            card = self.create_module_card(module)
             self.grid_layout.addWidget(card, row, col)
             col += 1
             if col > 3:
                 col = 0
                 row += 1
 
-    def create_module_card(
-        self, name: str, icon_path: str, description: str, is_special: bool = False
-    ) -> QFrame:
+    def create_module_card(self, module):
         card = QFrame()
         card.setFixedSize(200, 200)
 
@@ -89,19 +89,19 @@ class HomeScreen(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # --- Étoile ---
-        star_widget = self.build_star_widget(is_special)
+        star_widget = self.build_star_widget(module.name, module.favorite)
         layout.addWidget(star_widget, alignment=Qt.AlignmentFlag.AlignRight)
 
         # --- Titre ---
-        title_label = self.build_title_widget(name)
+        title_label = self.build_title_widget(module.name)
         layout.addWidget(title_label)
 
         # --- Icône ---
-        icon_label = self.build_icon_widget(icon_path)
+        icon_label = self.build_icon_widget(module.icon_path)
         layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # --- Description ---
-        desc_label = self.build_description_widget(description)
+        desc_label = self.build_description_widget(module.description)
         layout.addWidget(desc_label, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         card.setLayout(layout)
@@ -109,41 +109,32 @@ class HomeScreen(QWidget):
 
         return card
 
-    def build_star_widget(self, is_special: bool) -> QWidget:
-        if is_special:
-            # Étoile statique pleine (ex : carte Vølund)
-            label = QLabel()
-            pixmap = QPixmap(Settings.FULL_STAR_PNG).scaled(
-                16,
-                16,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            label.setPixmap(pixmap)
-            label.setAlignment(Qt.AlignmentFlag.AlignRight)
-            return label
-        else:
-            # Étoile interactive (favori)
-            button = QPushButton()
-            button.setCheckable(True)
-            button.setChecked(False)  # plus tard : à relier à une config utilisateur
-            button.setMaximumWidth(30)
-            button.setStyleSheet("border: none;")
+    def build_star_widget(self, module_name: str, default_fav: bool) -> QWidget:
+        button = QPushButton()
+        button.setCheckable(True)
+        button.setChecked(default_fav)  # État initial basé sur le favori par défaut
+        button.setMaximumWidth(30)
+        button.setStyleSheet("border: none;")
 
-            def update_icon():
-                icon_path = (
-                    Settings.FULL_STAR_PNG
-                    if button.isChecked()
-                    else Settings.EMPTY_STAR_PNG
-                )
-                button.setIcon(QIcon(icon_path))
-                button.setIconSize(QSize(16, 16))
+        if module_name == "Vølund":
+            button.setChecked(True)
+            button.setEnabled(False)
 
-            # Initialisation + signal
-            update_icon()
-            button.clicked.connect(update_icon)
+        def update_icon():
+            is_fav = button.isChecked()
+            icon_path = Settings.FULL_STAR_PNG if is_fav else Settings.EMPTY_STAR_PNG
+            button.setIcon(QIcon(icon_path))
+            button.setIconSize(QSize(16, 16))
+            # Sauvegarde l'état du favori dans le fichier JSON
+            set_module_favorite(module_name, is_fav)
+            # Émet le signal avec le nom du module et l'état de favori
+            self.module_favorited.emit(module_name, is_fav)
 
-            return button
+        # Initialisation + signal
+        update_icon()
+        button.clicked.connect(update_icon)
+
+        return button
 
     def build_title_widget(self, name: str) -> QLabel:
         # Vérifie si le nom est vide ou uniquement composé d'espaces

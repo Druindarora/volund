@@ -32,6 +32,10 @@ class MainWindow(QMainWindow):
         # Construction des éléments d’interface
         self._create_sidebar()
         self._create_home()
+        self.sidebar.refresh()
+
+        # Connecter le signal des favoris
+        self.home_screen.module_favorited.connect(self.handle_favorite_toggle)
 
         # Appliquer le layout final
         self.central_widget.setLayout(self.main_layout)
@@ -114,6 +118,12 @@ class MainWindow(QMainWindow):
         """
         self._save_timer.start()
         super().moveEvent(event)
+
+    def handle_favorite_toggle(self, module_name: str, is_favorite: bool):
+        """
+        Gère les changements d'état de favori d'un module.
+        """
+        self.sidebar.update_favorites(module_name, is_favorite)
 
 
 def load_qss(path: str) -> str:

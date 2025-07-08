@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List
 
 from models.module_info import ModuleInfo
+from utils.module_state import load_module_state
 
 
 class ModuleManager:
@@ -21,9 +22,9 @@ class ModuleManager:
     def load_modules(self) -> None:
         """
         Parcourt tous les dossiers du répertoire modules et tente de charger les métadonnées (ModuleInfo).
+        Applique les états sauvegardés (favoris, etc.) depuis `module_state.json`.
         """
         if not self.modules_path.exists():
-            print(f"❌ Le dossier '{self.modules_path}' est introuvable.")
             return
 
         for module_dir in self.modules_path.iterdir():
@@ -34,11 +35,14 @@ class ModuleManager:
                         module_info = self._import_module_info(init_file)
                         if module_info:
                             self.modules.append(module_info)
-                    except Exception as e:
-                        print(
-                            f"⚠️ Erreur lors du chargement du module '{module_dir.name}': {e}"
-                        )
+                    except Exception:
                         traceback.print_exc()
+
+        # Charger les états des modules depuis le fichier JSON
+        state_data = load_module_state()
+        for module in self.modules:
+            if module.name in state_data:
+                module.favorite = state_data[module.name].get("favorite", False)
 
     def _import_module_info(self, init_path: Path) -> ModuleInfo | None:
         """

@@ -48,6 +48,7 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
 
+from core.module_manager import ModuleManager
 from gui.images_paths import ICONS
 
 
@@ -70,6 +71,24 @@ class Sidebar(QFrame):
         self.home_button.setFixedSize(40, 40)
         layout.addWidget(self.home_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+        # Zone centrale pour les favoris
+        self.favorites_layout = QVBoxLayout()
+
+        # Créer un widget conteneur pour les favoris
+        self.favorites_container = QFrame()
+        self.favorites_container.setObjectName("FavoritesContainer")
+        self.favorites_container.setContentsMargins(0, 0, 0, 0)
+        self.favorites_container.setStyleSheet("background: transparent;")
+
+        self.favorites_layout = QVBoxLayout()
+        self.favorites_layout.setContentsMargins(0, 0, 0, 0)
+        self.favorites_layout.setSpacing(0)
+
+        self.favorites_container.setLayout(self.favorites_layout)
+        layout.insertWidget(
+            1, self.favorites_container, alignment=Qt.AlignmentFlag.AlignTop
+        )
+
         # Ajouter un stretch pour pousser le reste en bas
         layout.addStretch()
 
@@ -86,3 +105,30 @@ class Sidebar(QFrame):
 
     def get_buttons(self):
         return {"home": self.home_button, "settings": self.settings_button}
+
+    def update_favorites(self, module_name: str, is_favorite: bool):
+        print(f"[Sidebar] Mise à jour : {module_name} -> favori={is_favorite}")
+        self.refresh()
+
+    def refresh(self):
+        # Vider la zone des favoris
+        while self.favorites_layout.count():
+            item = self.favorites_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        # Recharger les modules favoris
+        manager = ModuleManager()
+        manager.load_modules()
+        favorite_modules = [m for m in manager.get_all_modules() if m.favorite]
+
+        for module in favorite_modules:
+            button = QPushButton()
+            button.setIcon(QIcon(module.icon_path))
+            button.setIconSize(QSize(30, 30))
+            button.setFixedSize(40, 40)
+            button.setToolTip(module.name)
+            self.favorites_layout.addWidget(
+                button, alignment=Qt.AlignmentFlag.AlignHCenter
+            )
