@@ -9,7 +9,9 @@ from PySide6.QtWidgets import (
 )
 
 from modules.parlia import ModuleInfo
+from modules.parlia.ui.action_panel import ActionPanel
 from modules.parlia.ui.settings_panel import SettingsPanel
+from modules.parlia.ui.transcription_panel import TranscriptionPanel
 
 
 class ParliaHome(QWidget):
@@ -27,6 +29,9 @@ class ParliaHome(QWidget):
         layout.addWidget(self._create_separator())
         layout.addWidget(self._create_settings_block())
         layout.addWidget(self._create_separator())
+        layout.addWidget(self._create_transcription_block())
+        layout.addWidget(self._create_separator())
+        layout.addWidget(self._create_action_block())
 
         layout.addStretch()
         self.setLayout(layout)
@@ -52,9 +57,49 @@ class ParliaHome(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         label = QLabel("⚙️ Paramètres Whisper (à venir)")
-        # label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
+        label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
         layout.addWidget(SettingsPanel(self))
+
+        container.setLayout(layout)
+        return container
+
+    def _create_transcription_block(self) -> QWidget:
+        """
+        Crée un bloc pour la transcription.
+        """
+        container = QWidget()
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        label = QLabel("📝 Transcription")
+        label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
+        layout.addWidget(label)
+
+        self.transcription_panel = TranscriptionPanel(self)
+        self.action_panel = ActionPanel(transcription_panel=self.transcription_panel)
+        layout.addWidget(self.transcription_panel)
+
+        container.setLayout(layout)
+        return container
+
+    def _create_action_block(self) -> QWidget:
+        """
+        Crée un bloc pour les actions.
+        """
+        container = QWidget()
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        # Placeholder pour le contenu futur
+        label = QLabel("🔧 Actions")
+        label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
+        layout.addWidget(label)
+
+        action_panel = ActionPanel(
+            transcription_panel=self.transcription_panel, parent=self
+        )
+        layout.addWidget(action_panel)
 
         container.setLayout(layout)
         return container
