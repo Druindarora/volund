@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 )
 
 from modules.parlia import ModuleInfo
+from modules.parlia.ui.settings_panel import SettingsPanel
 
 
 class ParliaHome(QWidget):
@@ -25,6 +26,7 @@ class ParliaHome(QWidget):
         layout.addWidget(self._create_title())
         layout.addWidget(self._create_separator())
         layout.addWidget(self._create_settings_block())
+        layout.addWidget(self._create_separator())
 
         layout.addStretch()
         self.setLayout(layout)
@@ -50,8 +52,9 @@ class ParliaHome(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         label = QLabel("⚙️ Paramètres Whisper (à venir)")
-        label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
+        # label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
+        layout.addWidget(SettingsPanel(self))
 
         container.setLayout(layout)
         return container
