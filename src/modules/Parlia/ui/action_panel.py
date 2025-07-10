@@ -1,6 +1,8 @@
-from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from modules.parlia.services.action_service import copy_chatrelay_text, copy_text
+from modules.parlia.services.vsCodeService import focus_vscode_qt
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 
 
@@ -11,6 +13,11 @@ class ActionPanel(QWidget):
 
         # Create the main vertical layout for the action panel
         main_layout = QVBoxLayout()
+
+        # Add status label at the top
+        self.status_label = QLabel("Prêt")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.status_label)
 
         # First row: "Copier vers ChatRelay" and "Copier le texte"
         row1 = self.create_copy_row()
@@ -84,7 +91,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus vers ChatGPT" button.
         """
-        button = QPushButton("Focus vers ChatGPT")
+        button = QPushButton("Focus ChatGPT")
         # Connect signal if needed
         return button
 
@@ -92,15 +99,21 @@ class ActionPanel(QWidget):
         """
         Create the "Focus vers VS Code" button.
         """
-        button = QPushButton("Focus vers VS Code")
-        # Connect signal if needed
+        button = QPushButton("Focus VS Code")
+        button.clicked.connect(
+            lambda: focus_vscode_qt(
+                text=self.transcription_panel.get_transcription_text(),
+                status_callback=self.show_status_message,
+                countdown_callback=self.show_countdown_message,
+            )
+        )
         return button
 
     def create_focus_and_code_button(self):
         """
         Create the "Focus et Code" button.
         """
-        button = QPushButton("Focus et Code")
+        button = QPushButton("Focus VSC et Code")
         # Connect signal if needed
         return button
 
@@ -108,6 +121,19 @@ class ActionPanel(QWidget):
         """
         Create the "Focus and Refacto" button.
         """
-        button = QPushButton("Focus and Refacto")
+        button = QPushButton("Focus VSC et Refacto")
         # Connect signal if needed
         return button
+
+    def show_status_message(self, message: str, success: bool = True):
+        """
+        Update the status label with the provided message.
+        Change the color based on success or failure.
+        """
+        self.status_label.setText(message)
+        color = "green" if success else "red"
+        self.status_label.setStyleSheet(f"color: {color}; font-weight: bold;")
+
+    def show_countdown_message(self, message: str):
+        self.status_label.setText(message)
+        self.status_label.setStyleSheet("color: orange; font-style: italic;")
