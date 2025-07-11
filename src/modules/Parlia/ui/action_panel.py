@@ -1,8 +1,13 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from modules.parlia.config import config
 from modules.parlia.services.action_service import copy_chatrelay_text, copy_text
-from modules.parlia.services.vsCodeService import focus_vscode_qt
+from modules.parlia.services.vsCodeService import (
+    focus_and_paste_in_vscode,
+    focus_vscode_and_refacto,
+    focus_vscode_qt,
+)
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 
 
@@ -99,7 +104,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus vers VS Code" button.
         """
-        button = QPushButton("Focus VS Code")
+        button = QPushButton("Focus VSC")
         button.clicked.connect(
             lambda: focus_vscode_qt(
                 text=self.transcription_panel.get_transcription_text(),
@@ -114,7 +119,14 @@ class ActionPanel(QWidget):
         Create the "Focus et Code" button.
         """
         button = QPushButton("Focus VSC et Code")
-        # Connect signal if needed
+        button.clicked.connect(
+            lambda: focus_and_paste_in_vscode(
+                text=config.focus_and_code,
+                status_callback=self.show_status_message,
+                countdown_callback=self.show_countdown_message,
+            )
+        )
+
         return button
 
     def create_focus_and_refacto_button(self):
@@ -122,7 +134,13 @@ class ActionPanel(QWidget):
         Create the "Focus and Refacto" button.
         """
         button = QPushButton("Focus VSC et Refacto")
-        # Connect signal if needed
+        button.clicked.connect(
+            lambda: focus_vscode_and_refacto(
+                text=config.focus_and_refacto,
+                status_callback=self.show_status_message,
+                countdown_callback=self.show_countdown_message,
+            )
+        )
         return button
 
     def show_status_message(self, message: str, success: bool = True):

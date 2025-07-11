@@ -25,16 +25,23 @@ class ParliaConfig:
         return "ctrl+shift+f12"
 
     @property
-    def window_size(self) -> tuple[int, int]:
-        return (600, 600)
-
-    @property
     def focus_countdown(self) -> int:
         return 5
 
     @property
     def timeouts(self) -> Timeouts:
         return Timeouts()
+
+    @property
+    def focus_and_code(self) -> str:
+        return "Analyse tous les commentaires du fichier et code ce qui est demandé, sans modifier ce qui ne l'est pas."
+
+    @property
+    def focus_and_refacto(self) -> str:
+        return (
+            "Refactorise uniquement la méthode suivante pour la rendre plus claire, "
+            "plus lisible ou plus efficace, sans changer son comportement."
+        )
 
 
 # ✅ L’instance typée

@@ -39,9 +39,7 @@ def activate_window_by_title(window_title):
 # --- Main logic (threaded) ---
 
 
-def focus_and_paste_in_vscode(
-    text, config, status_callback=None, countdown_callback=None
-):
+def focus_and_paste_in_vscode(text, status_callback=None, countdown_callback=None):
     """
     Focus on VS Code and paste text using clipboard and keyboard emulation.
     All actions are run in a background thread.
@@ -92,7 +90,19 @@ def focus_vscode_qt(text: str, status_callback=None, countdown_callback=None):
 
     focus_and_paste_in_vscode(
         text=text,
-        config=config,  # ✅ on réutilise ici la config globale
+        status_callback=status_callback,
+        countdown_callback=countdown_callback,
+    )
+
+
+def focus_vscode_and_refacto(text: str, status_callback=None, countdown_callback=None):
+    if not text.strip():
+        if status_callback:
+            status_callback("⚠️ Aucun texte à coller, focus annulé.", False)
+        return
+
+    focus_and_paste_in_vscode(
+        text=text,
         status_callback=status_callback,
         countdown_callback=countdown_callback,
     )
