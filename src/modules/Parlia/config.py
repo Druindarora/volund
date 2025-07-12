@@ -43,6 +43,14 @@ class ParliaConfig:
             "plus lisible ou plus efficace, sans changer son comportement."
         )
 
+    @property
+    def vscode_window_title(self) -> str:
+        return "Visual Studio Code"
+
+    @property
+    def default_countdown_message(self) -> str:
+        return "Attention, vous avez {n} seconde(s) pour vous focus sur VS Code..."
+
 
 # ✅ L’instance typée
 config = ParliaConfig()

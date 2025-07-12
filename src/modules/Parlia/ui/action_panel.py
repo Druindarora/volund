@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWi
 
 from modules.parlia.config import config
 from modules.parlia.services.action_service import copy_chatrelay_text, copy_text
+from modules.parlia.services.chatgptService import send_text_to_chatgpt
 from modules.parlia.services.vsCodeService import (
     focus_and_paste_in_vscode,
     focus_vscode_and_refacto,
@@ -97,7 +98,12 @@ class ActionPanel(QWidget):
         Create the "Focus vers ChatGPT" button.
         """
         button = QPushButton("Focus ChatGPT")
-        # Connect signal if needed
+        button.clicked.connect(
+            lambda: send_text_to_chatgpt(
+                text=self.transcription_panel.get_transcription_text(),
+                status_callback=self.show_status_message,
+            )
+        )
         return button
 
     def create_focus_vscode_button(self):
@@ -134,9 +140,10 @@ class ActionPanel(QWidget):
         Create the "Focus and Refacto" button.
         """
         button = QPushButton("Focus VSC et Refacto")
+
         button.clicked.connect(
             lambda: focus_vscode_and_refacto(
-                text=config.focus_and_refacto,
+                text=self.transcription_panel.get_transcription_text(),
                 status_callback=self.show_status_message,
                 countdown_callback=self.show_countdown_message,
             )
