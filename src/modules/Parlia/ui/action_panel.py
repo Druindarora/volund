@@ -3,8 +3,13 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWi
 
 from modules.parlia.config import config
 from modules.parlia.services.action_service import copy_chatrelay_text, copy_text
-from modules.parlia.services.chatgptService import send_text_to_chatgpt
+from modules.parlia.services.chatgptService import (
+    add_files_to_text_area,
+    send_text_to_chatgpt,
+)
 from modules.parlia.services.vsCodeService import (
+    analyze_code_to_vscode,
+    explain_code_to_vscode,
     focus_and_paste_in_vscode,
     focus_vscode_and_refacto,
     focus_vscode_qt,
@@ -74,23 +79,30 @@ class ActionPanel(QWidget):
         layout = QHBoxLayout()
 
         button_add_files = QPushButton("Ajouter des fichiers à la requête")
+        button_add_files.clicked.connect(
+            lambda: add_files_to_text_area(self.transcription_panel.transcription_text)
+        )
         layout.addWidget(button_add_files)
 
         return layout
 
     def create_focus_row(self):
         """
-        Create third row with four buttons:
+        Create third row with six buttons:
         - "Focus vers ChatGPT"
         - "Focus vers VS Code"
         - "Focus et Code"
         - "Focus and Refacto"
+        - "Expliquer le code"
+        - "Analyser le code"
         """
         layout = QHBoxLayout()
         layout.addWidget(self.create_focus_chatgpt_button())
         layout.addWidget(self.create_focus_vscode_button())
         layout.addWidget(self.create_focus_and_code_button())
         layout.addWidget(self.create_focus_and_refacto_button())
+        layout.addWidget(self.create_explain_code_button())
+        layout.addWidget(self.create_analyze_code_button())
         return layout
 
     def create_focus_chatgpt_button(self):
@@ -144,6 +156,33 @@ class ActionPanel(QWidget):
         button.clicked.connect(
             lambda: focus_vscode_and_refacto(
                 text=self.transcription_panel.get_transcription_text(),
+                status_callback=self.show_status_message,
+                countdown_callback=self.show_countdown_message,
+            )
+        )
+        return button
+
+    def create_explain_code_button(self):
+        """
+        Create the "Expliquer le code" button.
+        """
+        button = QPushButton("Expliquer le code")
+        button.clicked.connect(
+            lambda: explain_code_to_vscode(
+                method_name=self.transcription_panel.get_transcription_text(),
+                status_callback=self.show_status_message,
+                countdown_callback=self.show_countdown_message,
+            )
+        )
+        return button
+
+    def create_analyze_code_button(self):
+        """
+        Create the "Analyser le code" button.
+        """
+        button = QPushButton("Analyser le code")
+        button.clicked.connect(
+            lambda: analyze_code_to_vscode(
                 status_callback=self.show_status_message,
                 countdown_callback=self.show_countdown_message,
             )

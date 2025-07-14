@@ -1,50 +1,30 @@
-import json
-import os
+# modules/core/state/module_state.py
+
+from core.user_data_manager import user_data
+
+MODULE_NAME = "volund"
+STATE_KEY = "module_state"  # Toutes les infos seront stockées dans volund.json > data > module_state
 
 
 def load_module_state() -> dict:
     """
-    Charge le fichier JSON `config/module_state.json`.
-    Retourne un dictionnaire vide si le fichier n'existe pas ou est corrompu.
+    Charge les états des modules depuis user_data/volund.json (clé "module_state").
+    Retourne un dictionnaire vide si rien n’est défini.
     """
-    file_path = os.path.join("config", "module_state.json")
-    if not os.path.exists(file_path):
-        return {}
-
-    try:
-        with open(file_path, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except (json.JSONDecodeError, IOError):
-        print(f"⚠️ Fichier JSON corrompu ou vide : {file_path}. Réinitialisation.")
-        return {}
+    data = user_data.get(MODULE_NAME, STATE_KEY)
+    return data if isinstance(data, dict) else {}
 
 
 def save_module_state(data: dict) -> None:
     """
-    Sauvegarde les données dans config/module_state.json de façon atomique,
-    pour éviter les corruptions lors des lectures simultanées.
+    Sauvegarde les états des modules dans user_data/volund.json (clé "module_state").
     """
-    import tempfile
-
-    os.makedirs("config", exist_ok=True)
-    file_path = os.path.join("config", "module_state.json")
-
-    # Écrire dans un fichier temporaire
-    with tempfile.NamedTemporaryFile(
-        "w", encoding="utf-8", delete=False, dir="config"
-    ) as tmp_file:
-        json.dump(data, tmp_file, ensure_ascii=False, indent=4)
-        tmp_file.flush()
-        os.fsync(tmp_file.fileno())
-        temp_name = tmp_file.name
-
-    # Remplacer le fichier d'origine de façon atomique
-    os.replace(temp_name, file_path)
+    user_data.set(MODULE_NAME, STATE_KEY, data)
 
 
 def set_module_favorite(module_name: str, is_favorite: bool) -> None:
     """
-    Modifie ou ajoute le champ `favorite` pour le module donné.
+    Modifie ou ajoute le champ `favorite` pour le module donné dans le fichier user_data.
     """
     data = load_module_state()
 

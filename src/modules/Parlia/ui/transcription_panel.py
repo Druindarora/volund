@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QStyle,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -24,6 +25,13 @@ class TranscriptionPanel(QWidget):
         main_layout.addWidget(self.right_panel)
         self.setLayout(main_layout)
 
+    def set_status(self, status: str):
+        """
+        Met à jour le texte du label de statut et vérifie les conditions.
+        """
+        self.status_label.setText(f"Statut : {status}")
+        self.update_record_button_state()
+
     def create_left_side(self):
         """
         Create the left side of the panel with buttons, labels, etc.
@@ -32,26 +40,54 @@ class TranscriptionPanel(QWidget):
         left_layout = QVBoxLayout()
 
         # Add a status label
-        status_label = QLabel("Statut : Prêt")
-        left_layout.addWidget(status_label)
+        self.status_label = QLabel("Statut : Prêt")
+        left_layout.addWidget(self.status_label)
 
         # Add a time management section
         self.manage_times(left_layout)
 
         # Add a record button
-        record_button = self.create_save_button()
+        record_button = self.create_record_button()
         left_layout.addWidget(record_button)
 
         left_widget.setLayout(left_layout)
         return left_widget
 
-    def create_save_button(self) -> QPushButton:
+    def create_record_button(self) -> QPushButton:
         """
-        Create and configure the save button.
+        Create and configure the record button with toggle behavior.
         """
-        button = QPushButton("Enregistrer")
-        # Configure button behavior here (e.g., connect signals)
-        return button
+        self.is_recording = False  # Initial recording state
+
+        self.record_button = QPushButton("▶ Enregistrer")
+        self.record_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+        )
+        self.record_button.setEnabled(False)  # Désactivé par défaut
+        self.record_button.clicked.connect(self.toggle_recording)
+
+        return self.record_button
+
+    def toggle_recording(self):
+        """
+        Toggle the recording state and update the button text/icon.
+        """
+        if not self.is_recording:
+            # Start recording
+            self.is_recording = True
+            self.record_button.setText("Stopper")
+            self.record_button.setIcon(
+                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop)
+            )
+            print("Recording started...")  # Placeholder for actual recording logic
+        else:
+            # Stop recording
+            self.is_recording = False
+            self.record_button.setText("Enregistrer")
+            self.record_button.setIcon(
+                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+            )
+            print("Recording stopped...")  # Placeholder for actual stop logic
 
     def manage_times(self, layout: QVBoxLayout):
         """
@@ -74,8 +110,8 @@ class TranscriptionPanel(QWidget):
         Create the max duration section with a label and combobox.
         """
         max_duration_label = QLabel("Durée max :")
-        max_duration_combobox = QComboBox()
-        max_duration_combobox.addItems(
+        self.max_duration_combobox = QComboBox()
+        self.max_duration_combobox.addItems(
             [
                 "Aucun temps",
                 "1 minute",
@@ -85,10 +121,13 @@ class TranscriptionPanel(QWidget):
                 "15 minutes",
             ]
         )
+        self.max_duration_combobox.currentIndexChanged.connect(
+            self.update_record_button_state
+        )
 
         max_duration_layout = QHBoxLayout()
         max_duration_layout.addWidget(max_duration_label)
-        max_duration_layout.addWidget(max_duration_combobox)
+        max_duration_layout.addWidget(self.max_duration_combobox)
 
         return max_duration_layout
 
@@ -125,11 +164,6 @@ class TranscriptionPanel(QWidget):
         right_widget = QWidget()
         right_layout = QVBoxLayout()
 
-        # Add formatting toolbar
-        # toolbar_layout = self.create_formatting_toolbar()
-        # right_layout.addLayout(toolbar_layout)
-
-        # Add QTextEdit for transcription results
         transcription_text = self.create_transcription_text()
         right_layout.addWidget(transcription_text)
 
@@ -219,3 +253,12 @@ class TranscriptionPanel(QWidget):
         text = self.transcription_text.toPlainText()
         print(f"Transcription text retrieved: {text}")
         return text
+
+    def update_record_button_state(self):
+        """
+        Met à jour l'état du bouton d'enregistrement en fonction des conditions.
+        """
+        statut_ready = self.status_label.text() == "Statut : Prêt"
+        duration_selected = self.max_duration_combobox.currentIndex() > 0
+
+        self.record_button.setEnabled(statut_ready and duration_selected)

@@ -62,7 +62,7 @@ def focus_and_paste_in_vscode(text, status_callback=None, countdown_callback=Non
                 if active_title and VSCODE_WINDOW_TITLE in active_title:
                     keyboard.send("ctrl+v")
                     time.sleep(config.timeouts.paste_delay)
-                    # keyboard.send("enter")
+                    keyboard.send("enter")
                     if status_callback:
                         status_callback("✅ Texte collé et envoyé dans VS Code", True)
                 else:
@@ -117,3 +117,60 @@ def focus_vscode_and_refacto(text: str, status_callback=None, countdown_callback
         status_callback=status_callback,
         countdown_callback=countdown_callback,
     )
+
+
+def explain_code_to_vscode(
+    method_name: str, status_callback=None, countdown_callback=None
+):
+    """
+    Prépare une invite d'explication pour VS Code.
+
+    Args:
+        text (str): Contenu du fichier ou méthode à expliquer.
+        method_name (str | None): Nom de la méthode à expliquer, ou None pour expliquer tout le fichier.
+        status_callback (callable, optional): Fonction de rappel pour afficher les messages de statut.
+    """
+    try:
+        if method_name:
+            prompt = f"Expliquez la méthode suivante : {method_name}"
+        else:
+            prompt = f"Expliquez le fichier"
+
+        pyperclip.copy(prompt)
+
+        focus_and_paste_in_vscode(
+            text=prompt,
+            status_callback=status_callback,
+            countdown_callback=countdown_callback,
+        )
+
+    except Exception as e:
+        error_message = f"❌ Erreur lors de la préparation de l'invite : {e}"
+        print(error_message)
+        if status_callback:
+            status_callback(error_message, False)
+
+
+def analyze_code_to_vscode(status_callback=None, countdown_callback=None):
+    """
+    Prépare une invite d'analyse pour VS Code.
+
+    Args:
+        status_callback (callable, optional): Fonction de rappel pour afficher les messages de statut.
+    """
+    try:
+        prompt = "Peux-tu analyser ce fichier ? Je veux un retour sur : la lisibilité et la structure du code la clarté des noms (méthodes, variables)les éventuelles mauvaises pratiques ou erreurs les opportunités de refactorisation Termine par une note globale de qualité sur 10 et des suggestions d'amélioration si besoin."
+
+        pyperclip.copy(prompt)
+
+        focus_and_paste_in_vscode(
+            text=prompt,
+            status_callback=status_callback,
+            countdown_callback=countdown_callback,
+        )
+
+    except Exception as e:
+        error_message = f"❌ Erreur lors de la préparation de l'invite : {e}"
+        print(error_message)
+        if status_callback:
+            status_callback(error_message, False)

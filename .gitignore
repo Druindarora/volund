@@ -35,3 +35,6 @@ launch-dev.bat
 
 # Config utilisateur (ne pas versionner)
 config/*.json
+
+# Données locales de l'utilisateur
+user_data/
