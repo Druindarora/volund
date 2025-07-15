@@ -76,10 +76,18 @@ class UserDataManager:
         self._write_file(file_path, content)
 
     def _read_file(self, path: Path) -> dict:
-        if not path.exists():
+        """
+        Lit un fichier JSON en toute sécurité. Si le fichier est vide ou corrompu,
+        retourne une structure vide par défaut pour éviter les plantages.
+        """
+        if not path.exists() or path.stat().st_size == 0:
             return {"version": USER_DATA_VERSION, "data": {}}
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print(f"[ERREUR] Fichier JSON corrompu ou vide : {path}")
+            return {"version": USER_DATA_VERSION, "data": {}}
 
     def _write_file(self, path: Path, content: dict):
         with open(path, "w", encoding="utf-8") as f:

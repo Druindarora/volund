@@ -11,10 +11,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from modules.parlia.services.parlia_data import get_max_duration, set_max_duration
+from modules.parlia.services.parlia_state_manager import parlia_state
+
 
 class TranscriptionPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        parlia_state.subscribe(self.update_ui)
 
         # Create the main horizontal layout with two panels (left and right)
         main_layout = QHBoxLayout()
@@ -25,13 +29,6 @@ class TranscriptionPanel(QWidget):
         main_layout.addWidget(self.right_panel)
         self.setLayout(main_layout)
 
-    def set_status(self, status: str):
-        """
-        Met à jour le texte du label de statut et vérifie les conditions.
-        """
-        self.status_label.setText(f"Statut : {status}")
-        self.update_record_button_state()
-
     def create_left_side(self):
         """
         Create the left side of the panel with buttons, labels, etc.
@@ -40,7 +37,8 @@ class TranscriptionPanel(QWidget):
         left_layout = QVBoxLayout()
 
         # Add a status label
-        self.status_label = QLabel("Statut : Prêt")
+        # self.status_label = QLabel("Statut : Prêt")
+        self.status_label = QLabel(parlia_state.get_status_label())
         left_layout.addWidget(self.status_label)
 
         # Add a time management section
@@ -59,7 +57,7 @@ class TranscriptionPanel(QWidget):
         """
         self.is_recording = False  # Initial recording state
 
-        self.record_button = QPushButton("▶ Enregistrer")
+        self.record_button = QPushButton("Enregistrer")
         self.record_button.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
         )
@@ -108,28 +106,58 @@ class TranscriptionPanel(QWidget):
     def create_max_duration_section(self):
         """
         Create the max duration section with a label and combobox.
+        Load saved duration from UserDataManager and save changes to parlia.jsonData.
         """
         max_duration_label = QLabel("Durée max :")
         self.max_duration_combobox = QComboBox()
-        self.max_duration_combobox.addItems(
-            [
-                "Aucun temps",
-                "1 minute",
-                "2 minutes",
-                "5 minutes",
-                "10 minutes",
-                "15 minutes",
-            ]
-        )
-        self.max_duration_combobox.currentIndexChanged.connect(
-            self.update_record_button_state
-        )
+
+        self._populate_duration_options()
+        self._load_saved_duration()
+
+        # Save changes to UserDataManager on selection change
+        self.max_duration_combobox.currentIndexChanged.connect(self.save_max_duration)
 
         max_duration_layout = QHBoxLayout()
         max_duration_layout.addWidget(max_duration_label)
         max_duration_layout.addWidget(self.max_duration_combobox)
 
         return max_duration_layout
+
+    def _populate_duration_options(self):
+        """
+        Populate the combobox with predefined duration options.
+        """
+        self.duration_options = {
+            "0": "Aucun temps",
+            "1": "1 minute",
+            "2": "2 minutes",
+            "5": "5 minutes",
+            "10": "10 minutes",
+            "15": "15 minutes",
+        }
+
+        for key, value in self.duration_options.items():
+            self.max_duration_combobox.addItem(value, key)
+
+    def _load_saved_duration(self):
+        """
+        Load the saved duration from UserDataManager and set it in the combobox.
+        """
+        saved_duration_key = get_max_duration()
+
+        if saved_duration_key and saved_duration_key in self.duration_options:
+            index = self.max_duration_combobox.findData(saved_duration_key)
+            if index != -1:
+                self.max_duration_combobox.setCurrentIndex(index)
+        else:
+            self.max_duration_combobox.setCurrentIndex(0)  # Default to "Aucun temps"
+
+    def save_max_duration(self):
+        """
+        Save the selected max duration key to UserDataManager.
+        """
+        selected_key = self.max_duration_combobox.currentData()
+        set_max_duration(selected_key)
 
     def create_recording_time_section(self):
         """
@@ -254,11 +282,8 @@ class TranscriptionPanel(QWidget):
         print(f"Transcription text retrieved: {text}")
         return text
 
-    def update_record_button_state(self):
-        """
-        Met à jour l'état du bouton d'enregistrement en fonction des conditions.
-        """
-        statut_ready = self.status_label.text() == "Statut : Prêt"
-        duration_selected = self.max_duration_combobox.currentIndex() > 0
-
-        self.record_button.setEnabled(statut_ready and duration_selected)
+    def update_ui(self):
+        self.record_button.setEnabled(parlia_state.is_ready_to_record())
+        self.max_duration_combobox.setEnabled(not parlia_state.is_ui_locked())
+        self.status_label.setText(parlia_state.get_status_label())
+        # tu pourras ajouter d'autres .setEnabled(...) ici
