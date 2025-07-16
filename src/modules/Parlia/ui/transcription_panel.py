@@ -1,3 +1,5 @@
+from typing import Optional
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QTextCharFormat
 from PySide6.QtWidgets import (
@@ -11,8 +13,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from modules.parlia.services.audioService import audio_service
 from modules.parlia.services.parlia_data import get_max_duration, set_max_duration
 from modules.parlia.services.parlia_state_manager import parlia_state
+from modules.parlia.services.whisper_service import whisper_service
 
 
 class TranscriptionPanel(QWidget):
@@ -81,6 +85,7 @@ class TranscriptionPanel(QWidget):
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop)
             )
+            audio_service.start_recording()  # Start the audio recording service
             print("Recording started...")  # Placeholder for actual recording logic
         else:
             # Stop recording
@@ -89,7 +94,9 @@ class TranscriptionPanel(QWidget):
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
             )
+            audio_service.stop_recording()  # Stop the audio recording service
             print("Recording stopped...")  # Placeholder for actual stop logic
+            whisper_service.transcribe(callback=self._on_transcription_done)
 
     def manage_times(self, layout: QVBoxLayout):
         """
@@ -250,7 +257,19 @@ class TranscriptionPanel(QWidget):
         self.transcription_text = transcription_text
         return transcription_text
 
-    # Define formatting functions
+    def _on_transcription_done(self, text: Optional[str]):
+        """
+        Callback appelé automatiquement à la fin de la transcription.
+        Affiche le texte transcrit ou un message d’erreur.
+        """
+        if text is None:
+            self.transcription_text.setPlainText("⚠️ Erreur lors de la transcription.")
+        else:
+            self.transcription_text.setPlainText(text)
+
+        # Réactiver les boutons, réinitialiser l’état
+        parlia_state.set_transcribing(False)
+        self.update_record_button_state()
 
     def apply_bold_formatting(self):
         cursor = self.transcription_text.textCursor()

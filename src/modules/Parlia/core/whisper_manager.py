@@ -1,64 +1,79 @@
 # 🔄 Module singleton pour gérer le modèle Whisper dans Parlia
 
-# Ce fichier doit garantir qu’un seul modèle Whisper est chargé à la fois
-# et que toutes les opérations passent par ce module centralisé.
+# Ce fichier garantit qu’un seul modèle Whisper est chargé à la fois.
+# Toutes les opérations de transcription passent par ici.
 
-# -----------------------------------------------------------
-# 💾 Variable interne pour stocker le modèle actuel
-# - initialiser à None au démarrage
-# - ne jamais exposer directement en dehors de ce fichier
+import os
+from typing import Optional
 
-_current_model = None
+import whisper  # Assure-toi d’avoir `openai-whisper` installé via `pip install -U openai-whisper`
 
-
-# -----------------------------------------------------------
-# 📥 Fonction : load_model(name: str)
-# - Si un modèle est déjà chargé, afficher un message et ignorer
-# - Sinon, charger le modèle (simulé ici) et le stocker dans _current_model
-# - En dev, afficher quel modèle a été chargé
+_current_model: Optional[whisper.Whisper] = None  # type: Optional[whisper.Whisper]
 
 
-def load_model(name: str):
+def load_model(model_path: str):
+    """
+    Charge un modèle Whisper depuis le fichier .pt ou .bin donné.
+    Si un modèle est déjà chargé, il est ignoré.
+    """
     global _current_model
+
     if _current_model is not None:
-        print(f"Un modèle est déjà chargé : {_current_model}. Ignorer la demande.")
+        print(f"[INFO] Un modèle est déjà chargé. Ignorer la demande.")
         return
 
-    # Simuler le chargement du modèle
-    _current_model = f"Modèle chargé : {name}"
-    print(f"Modèle '{name}' chargé avec succès.")
+    if not os.path.exists(model_path):
+        print(f"[ERREUR] Le modèle spécifié est introuvable : {model_path}")
+        return
 
-
-# -----------------------------------------------------------
-# 📤 Fonction : get_model() -> Any
-# - Retourne l’objet modèle actuel
-# - Peut être None si aucun modèle n’a encore été chargé
-
-
-def get_model():
-    return _current_model
-
-
-# -----------------------------------------------------------
-# ❌ Fonction : unload_model()
-# - Décharge le modèle en cours (le remet à None)
-# - Affiche un message de confirmation
+    print(f"[INFO] Chargement du modèle Whisper depuis : {model_path}")
+    _current_model = whisper.load_model(model_path)
+    print(f"[INFO] Modèle chargé avec succès.")
 
 
 def unload_model():
+    """
+    Décharge le modèle actuellement chargé.
+    """
     global _current_model
+
     if _current_model is None:
-        print("Aucun modèle n'est actuellement chargé.")
+        print("[INFO] Aucun modèle à décharger.")
         return
 
-    print(f"Modèle '{_current_model}' déchargé.")
+    print(f"[INFO] Déchargement du modèle.")
     _current_model = None
 
 
-# -----------------------------------------------------------
-# ✅ Fonction : is_model_loaded() -> bool
-# - Renvoie True si un modèle est déjà chargé, False sinon
-
-
-def is_model_loaded():
+def is_model_loaded() -> bool:
+    """
+    Retourne True si un modèle est actuellement chargé.
+    """
     return _current_model is not None
+
+
+def get_model():
+    """
+    Retourne l’instance du modèle actuel.
+    """
+    return _current_model
+
+
+def transcribe(audio_path: str) -> str:
+    """
+    Transcrit un fichier audio en texte via le modèle Whisper chargé.
+    """
+    if _current_model is None:
+        raise RuntimeError("Aucun modèle Whisper n'est chargé.")
+
+    print(f"[INFO] Lancement de la transcription réelle via Whisper.")
+    result = _current_model.transcribe(audio_path)
+
+    # Ajout d’un log pour vérification
+    print("[DEBUG] Résultat brut de Whisper :", result)
+
+    text = result.get("text", "")
+    if isinstance(text, str):
+        return text.strip()
+    else:
+        return ""
