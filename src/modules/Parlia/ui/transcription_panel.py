@@ -48,6 +48,8 @@ class TranscriptionPanel(QWidget):
         record_button = self.create_record_button()
         left_layout.addWidget(record_button)
 
+        self.update_record_button_state()
+
         left_widget.setLayout(left_layout)
         return left_widget
 
@@ -61,7 +63,9 @@ class TranscriptionPanel(QWidget):
         self.record_button.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
         )
-        self.record_button.setEnabled(False)  # Désactivé par défaut
+        self.record_button.setEnabled(
+            parlia_state.is_ready_to_record()
+        )  # Désactivé par défaut
         self.record_button.clicked.connect(self.toggle_recording)
 
         return self.record_button
@@ -287,3 +291,6 @@ class TranscriptionPanel(QWidget):
         self.max_duration_combobox.setEnabled(not parlia_state.is_ui_locked())
         self.status_label.setText(parlia_state.get_status_label())
         # tu pourras ajouter d'autres .setEnabled(...) ici
+
+    def update_record_button_state(self):
+        self.record_button.setEnabled(parlia_state.is_ready_to_record())

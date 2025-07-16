@@ -25,15 +25,31 @@ class ParliaHome(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
 
-        layout.addWidget(self._create_title())
-        layout.addWidget(self._create_separator())
-        layout.addWidget(self._create_settings_block())
-        layout.addWidget(self._create_separator())
-        layout.addWidget(self._create_transcription_block())
-        layout.addWidget(self._create_separator())
-        layout.addWidget(self._create_action_block())
+        # Création préalable des blocs dans le bon ordre logique
+        title = self._create_title()
+        separator1 = self._create_separator()
 
+        # On crée d'abord le bloc de transcription (nécessaire pour créer Settings ensuite)
+        self.transcription_panel = TranscriptionPanel(self)
+        transcription_block = self._create_transcription_block()
+
+        # Ensuite on peut créer SettingsPanel en lui passant le callback correct
+        settings_block = self._create_settings_block()
+
+        separator2 = self._create_separator()
+        separator3 = self._create_separator()
+        action_block = self._create_action_block()
+
+        # On ajoute tout dans le bon ordre dans le layout
+        layout.addWidget(title)
+        layout.addWidget(separator1)
+        layout.addWidget(settings_block)
+        layout.addWidget(separator2)
+        layout.addWidget(transcription_block)
+        layout.addWidget(separator3)
+        layout.addWidget(action_block)
         layout.addStretch()
+
         self.setLayout(layout)
 
     def _create_title(self) -> QLabel:
@@ -51,15 +67,19 @@ class ParliaHome(QWidget):
         return line
 
     def _create_settings_block(self) -> QWidget:
-        # Bloc placeholder pour les futurs paramètres (ex: choix du modèle Whisper)
         container = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        label = QLabel("⚙️ Paramètres Whisper (à venir)")
+        label = QLabel("⚙️ Paramètres Whisper")
         label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
-        layout.addWidget(SettingsPanel(self))
+
+        # On passe le vrai callback ici
+        self.settings_panel = SettingsPanel(
+            update_record_callback=self.transcription_panel.update_record_button_state
+        )
+        layout.addWidget(self.settings_panel)
 
         container.setLayout(layout)
         return container
