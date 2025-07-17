@@ -285,7 +285,6 @@ class SettingsPanel(QWidget):
             set_model_name(model_name)
             load_model(model_name)
             self.current_model_label.setText(f"Modèle en cours : {model_name}")
-            print(f"Modèle '{model_name}' sélectionné et chargé.")
 
             if self.update_record_callback:
                 self.update_record_callback()

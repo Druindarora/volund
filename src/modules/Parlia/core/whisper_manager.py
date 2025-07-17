@@ -3,32 +3,56 @@
 # Ce fichier garantit qu’un seul modèle Whisper est chargé à la fois.
 # Toutes les opérations de transcription passent par ici.
 
-import os
+from pathlib import Path
 from typing import Optional
 
 import whisper  # Assure-toi d’avoir `openai-whisper` installé via `pip install -U openai-whisper`
+
+from modules.parlia.services.parlia_state_manager import parlia_state
 
 _current_model: Optional[whisper.Whisper] = None  # type: Optional[whisper.Whisper]
 
 
 def load_model(model_path: str):
     """
-    Charge un modèle Whisper depuis le fichier .pt ou .bin donné.
-    Si un modèle est déjà chargé, il est ignoré.
+    Charge un modèle Whisper, soit depuis un nom intégré, soit depuis un fichier dans le dossier utilisateur.
     """
     global _current_model
 
     if _current_model is not None:
-        print(f"[INFO] Un modèle est déjà chargé. Ignorer la demande.")
+        print("[INFO] Un modèle est déjà chargé. Ignorer la demande.")
         return
 
-    if not os.path.exists(model_path):
-        print(f"[ERREUR] Le modèle spécifié est introuvable : {model_path}")
-        return
+    # Cas 1 : modèle intégré (fourni par Whisper directement)
+    if model_path in ["tiny", "base", "small", "medium", "large"]:
+        print(f"[INFO] Chargement du modèle Whisper intégré : {model_path}")
+        _current_model = whisper.load_model(model_path)
 
-    print(f"[INFO] Chargement du modèle Whisper depuis : {model_path}")
-    _current_model = whisper.load_model(model_path)
-    print(f"[INFO] Modèle chargé avec succès.")
+    else:
+        # Cas 2 : modèle custom => récupérer le dossier sélectionné par l'utilisateur
+        from modules.parlia.services.parlia_data import get_model_folder_path
+
+        model_dir = get_model_folder_path()
+
+        if not model_dir:
+            print(
+                "[ERREUR] Aucun dossier modèle défini dans les préférences utilisateur."
+            )
+            return
+
+        full_path = Path(model_dir) / model_path
+
+        if full_path.exists():
+            print(
+                f"[INFO] Chargement du modèle Whisper depuis fichier : {full_path.resolve()}"
+            )
+            _current_model = whisper.load_model(str(full_path))
+        else:
+            print(f"[ERREUR] Le modèle spécifié est introuvable : {full_path}")
+            return
+
+    print(f"[INFO] ✅ Modèle chargé avec succès : {model_path}")
+    parlia_state.set_whisper_ready(True)
 
 
 def unload_model():
@@ -43,6 +67,7 @@ def unload_model():
 
     print(f"[INFO] Déchargement du modèle.")
     _current_model = None
+    parlia_state.set_whisper_ready(False)
 
 
 def is_model_loaded() -> bool:

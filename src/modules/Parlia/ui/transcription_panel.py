@@ -22,16 +22,18 @@ from modules.parlia.services.whisper_service import whisper_service
 class TranscriptionPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        parlia_state.subscribe(self.update_ui)
 
-        # Create the main horizontal layout with two panels (left and right)
+        # Création des layouts
         main_layout = QHBoxLayout()
         self.left_panel = self.create_left_side()
         self.right_panel = self.create_right_side()
-
         main_layout.addWidget(self.left_panel)
         main_layout.addWidget(self.right_panel)
         self.setLayout(main_layout)
+
+        # ✅ Maintenant que tous les attributs sont là, on peut s’abonner en toute sécurité
+        parlia_state.subscribe(self.update_ui)
+        self.update_ui()
 
     def create_left_side(self):
         """
@@ -155,6 +157,9 @@ class TranscriptionPanel(QWidget):
         Load the saved duration from UserDataManager and set it in the combobox.
         """
         saved_duration_key = get_max_duration()
+        print(f"Loaded saved duration key: {saved_duration_key}")
+        if saved_duration_key.isdigit():
+            parlia_state.set_max_duration(int(saved_duration_key))
 
         if saved_duration_key and saved_duration_key in self.duration_options:
             index = self.max_duration_combobox.findData(saved_duration_key)
@@ -169,6 +174,8 @@ class TranscriptionPanel(QWidget):
         """
         selected_key = self.max_duration_combobox.currentData()
         set_max_duration(selected_key)
+        if selected_key.isdigit():
+            parlia_state.set_max_duration(int(selected_key))
 
     def create_recording_time_section(self):
         """

@@ -38,6 +38,12 @@ class ParliaStateManager:
         self.notify()
 
     def get_status_label(self) -> str:
+        print("=== [DEBUG] get_status_label ===")
+        print(f"[DEBUG] is_transcribing : {self.is_transcribing}")
+        print(f"[DEBUG] is_recording    : {self.is_recording}")
+        print(f"[DEBUG] whisper_ready   : {self.whisper_ready}")
+        print(f"[DEBUG] max_duration    : {self.max_duration}")
+
         if self.is_transcribing:
             return "Statut : Transcription en cours"
         elif self.is_recording:
