@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
@@ -13,28 +14,43 @@ from modules.parlia.services.parlia_data import (
 
 class _AsyncTranscriber(QObject):
     finished = Signal(object)
+    update_time = Signal(float)
 
     def __init__(self, path: str):
         super().__init__()
         self.audio_path = path
+        self._running = True
 
     def run(self):
-        from modules.parlia.core.whisper_manager import transcribe
-        from modules.parlia.services.parlia_data import (
-            get_conclusion_text,
-            get_include_conclusion,
-        )
+        start = time.monotonic()
+        print("[INFO] Lancement de la transcription réelle via Whisper.")
 
         try:
+            # Lancer dans un thread de mesure
+            def ticker():
+                while self._running:
+                    elapsed = time.monotonic() - start
+                    self.update_time.emit(elapsed)
+                    time.sleep(0.2)
+
+            from threading import Thread
+
+            timer_thread = Thread(target=ticker, daemon=True)
+            timer_thread.start()
+
+            # Transcription bloquante
             text = transcribe(self.audio_path)
             if get_include_conclusion():
                 conclusion = get_conclusion_text()
                 if conclusion:
                     text += f"\n\n{conclusion}"
             self.finished.emit(text)
+
         except Exception as e:
             print(f"[ERREUR ASYNC] Transcription échouée : {e}")
             self.finished.emit(None)
+        finally:
+            self._running = False
 
 
 class WhisperService:
@@ -99,6 +115,21 @@ class WhisperService:
         self._thread.finished.connect(self._thread.deleteLater)
 
         self._thread.start()
+
+        def on_thread_finished():
+            print("[DEBUG] Thread transcription terminé proprement.")
+
+        self._thread.finished.connect(on_thread_finished)
+
+    def connect_transcription_timer(self, slot):
+        if hasattr(self, "_worker") and self._worker:
+            self._worker.update_time.connect(slot)
+
+    def cleanup(self):
+        if hasattr(self, "_thread") and self._thread.isRunning():
+            print("[INFO] Attente de la fin du thread transcription...")
+            self._thread.quit()
+            self._thread.wait()
 
 
 whisper_service = WhisperService()

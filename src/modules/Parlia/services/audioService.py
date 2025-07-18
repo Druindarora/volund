@@ -1,14 +1,60 @@
 # 🎙️ AudioService - Service d’enregistrement audio pour Vølund / Parlia
 
 import os
+
+# import threading
 import time
 import wave
 from pathlib import Path
+
+from PySide6.QtCore import QObject, QThread, Signal
 
 try:
     import pyaudio
 except ImportError:
     pyaudio = None
+
+
+class AudioRecorder(QObject):
+    finished = Signal()
+    update_time = Signal(float)
+
+    def __init__(self, service):
+        super().__init__()
+        self.service = service
+        self.frames = []
+        self._running = True
+
+    def stop(self):
+        self._running = False
+
+    def run(self):
+        import time
+
+        audio = self.service.audio
+        stream = audio.open(
+            format=audio.get_format_from_width(2),
+            channels=1,
+            rate=44100,
+            input=True,
+            frames_per_buffer=1024,
+        )
+        self.service.stream = stream
+        self.service.start_time = time.monotonic()
+        print("Enregistrement démarré...")
+
+        while (
+            self._running
+            and (time.monotonic() - self.service.start_time) < self.service.max_duration
+        ):
+            data = stream.read(1024)
+            self.frames.append(data)
+            elapsed = time.monotonic() - self.service.start_time
+            self.update_time.emit(elapsed)
+
+        self.service._save_audio(self.frames)
+        print("Enregistrement terminé.")
+        self.finished.emit()
 
 
 class AudioService:
@@ -23,52 +69,34 @@ class AudioService:
         self.start_time = None
         self.audio = pyaudio.PyAudio() if pyaudio else None
         self.stream = None
+        self._thread = None
+        self._worker = None
 
         os.makedirs(self.output_path.parent, exist_ok=True)
 
     def start_recording(self):
-        """
-        Lance l’enregistrement pour une durée donnée.
-        """
-        if not pyaudio:
-            raise RuntimeError("PyAudio n'est pas disponible.")
-        if not self.audio:
-            raise RuntimeError("L'objet PyAudio n'a pas pu être initialisé.")
         if self.is_recording:
-            raise RuntimeError("Un enregistrement est déjà en cours.")
+            raise RuntimeError("Enregistrement déjà en cours.")
 
         self.is_recording = True
-        self.start_time = time.monotonic()
+        self._thread = QThread()
+        self._worker = AudioRecorder(self)
+        self._worker.moveToThread(self._thread)
 
-        self.stream = self.audio.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=44100,
-            input=True,
-            frames_per_buffer=1024,
-        )
+        self._thread.started.connect(self._worker.run)
+        self._worker.finished.connect(self._thread.quit)
+        self._worker.finished.connect(self._worker.deleteLater)
+        self._thread.finished.connect(self._thread.deleteLater)
 
-        frames = []
-        print("Enregistrement démarré...")
-
-        while (
-            self.is_recording
-            and (time.monotonic() - self.start_time) < self.max_duration
-        ):
-            data = self.stream.read(1024)
-            frames.append(data)
-
-        self._save_audio(frames)
-        print("Enregistrement terminé.")
+        self._thread.start()
 
     def stop_recording(self):
-        """
-        Force l’arrêt de l’enregistrement et retourne le chemin du fichier audio enregistré.
-        """
         if not self.is_recording:
             raise RuntimeError("Aucun enregistrement en cours.")
-
         self.is_recording = False
+
+        if self._worker:
+            self._worker.stop()
 
         if self.stream:
             self.stream.stop_stream()
@@ -76,6 +104,10 @@ class AudioService:
             self.stream = None
 
         return str(self.output_path)
+
+    def connect_timer(self, slot):
+        if self._worker:
+            self._worker.update_time.connect(slot)
 
     def get_elapsed_time(self):
         """

@@ -45,24 +45,28 @@ class ParliaStateManager:
         self.is_transcribing = state
         self.notify()
 
-    def get_status_label(self) -> str:
+    def get_status_info(self) -> tuple[str, str]:
+        """
+        Retourne un tuple (texte, status_type) où status_type ∈
+        'ready', 'error', 'neutral', 'warning'
+        """
         if is_dev():
-            print("=== [DEBUG] get_status_label ===")
+            print("=== [DEBUG] get_status_info ===")
             print(f"[DEBUG] is_transcribing : {self.is_transcribing}")
             print(f"[DEBUG] is_recording    : {self.is_recording}")
             print(f"[DEBUG] whisper_ready   : {self.whisper_ready}")
             print(f"[DEBUG] max_duration    : {self.max_duration}")
 
         if self.is_transcribing:
-            return "Statut : Transcription en cours"
+            return "Transcription en cours", "warning"
         elif self.is_recording:
-            return "Statut : Enregistrement en cours"
+            return "Enregistrement en cours", "warning"
         elif self.whisper_ready and self.max_duration > 0:
-            return "Statut : Prêt"
+            return "Prêt", "ready"
         elif not self.whisper_ready:
-            return "Statut : Whisper non prêt"
+            return "Whisper non prêt", "error"
         else:
-            return "Statut : Incomplet"
+            return "Incomplet", "neutral"
 
     # === Logique de validation ===
 

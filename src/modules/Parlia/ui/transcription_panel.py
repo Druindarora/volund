@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from PySide6.QtCore import Qt
@@ -30,6 +31,7 @@ class TranscriptionPanel(QWidget):
         main_layout.addWidget(self.left_panel)
         main_layout.addWidget(self.right_panel)
         self.setLayout(main_layout)
+        self.load_stylesheet()
 
         # ✅ Maintenant que tous les attributs sont là, on peut s’abonner en toute sécurité
         parlia_state.subscribe(self.update_ui)
@@ -43,9 +45,14 @@ class TranscriptionPanel(QWidget):
         left_layout = QVBoxLayout()
 
         # Add a status label
-        # self.status_label = QLabel("Statut : Prêt")
-        self.status_label = QLabel(parlia_state.get_status_label())
-        left_layout.addWidget(self.status_label)
+        status_layout = QHBoxLayout()
+        static_status_label = QLabel("Statut : ")
+        self.status_value_label = QLabel()
+
+        self.status_value_label.setObjectName("statusLabel")
+        status_layout.addWidget(static_status_label)
+        status_layout.addWidget(self.status_value_label)
+        left_layout.addLayout(status_layout)
 
         # Add a time management section
         self.manage_times(left_layout)
@@ -72,6 +79,7 @@ class TranscriptionPanel(QWidget):
         self.record_button.setEnabled(
             parlia_state.is_ready_to_record()
         )  # Désactivé par défaut
+
         self.record_button.clicked.connect(self.toggle_recording)
 
         return self.record_button
@@ -84,15 +92,18 @@ class TranscriptionPanel(QWidget):
             print("Starting recording...")
             self.is_recording = True
             self.record_button.setText("Stopper")
+            self.record_button.setObjectName("recordButton")
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop)
             )
             audio_service.start_recording()
+            audio_service.connect_timer(self.update_timer_label)
             print("Recording started...")
         else:
             print("Stopping recording...")
             self.is_recording = False
             self.record_button.setText("Enregistrer")
+            self.record_button.setObjectName("stopButton")
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
             )
@@ -102,6 +113,7 @@ class TranscriptionPanel(QWidget):
             # ⏳ Transcription asynchrone
             parlia_state.set_transcribing(True)
             whisper_service.transcribe_async(callback=self._on_transcription_done)
+            whisper_service.connect_transcription_timer(self.update_transcription_timer)
 
     def manage_times(self, layout: QVBoxLayout):
         """
@@ -185,26 +197,38 @@ class TranscriptionPanel(QWidget):
         Create the recording time section with a label and timer.
         """
         recording_time_label = QLabel("Temps d'enregistrement :")
-        recording_timer = QLabel("00:00")
+        self.recording_timer_label = QLabel("00:00")
+        self.recording_timer_label.setProperty("class", "timerLabel")
 
         recording_time_layout = QHBoxLayout()
         recording_time_layout.addWidget(recording_time_label)
-        recording_time_layout.addWidget(recording_timer)
+        recording_time_layout.addWidget(self.recording_timer_label)
 
         return recording_time_layout
 
+    def update_timer_label(self, seconds: float):
+        minutes = int(seconds) // 60
+        sec = int(seconds) % 60
+        self.recording_timer_label.setText(f"{minutes:02}:{sec:02}")
+
     def create_transcription_time_section(self):
-        """
-        Create the transcription time section with a label and timer.
-        """
         transcription_time_label = QLabel("Temps de transcription :")
-        transcription_timer = QLabel("00:00")
+        self.transcription_timer_label = QLabel("00:00")
+        self.transcription_timer_label.setProperty("class", "timerLabel")
 
         transcription_time_layout = QHBoxLayout()
         transcription_time_layout.addWidget(transcription_time_label)
-        transcription_time_layout.addWidget(transcription_timer)
+        transcription_time_layout.addWidget(self.transcription_timer_label)
 
         return transcription_time_layout
+
+    def update_transcription_timer(self, seconds: float):
+        minutes = int(seconds) // 60
+        sec = int(seconds) % 60
+        fraction = int(
+            (seconds - int(seconds)) * 100
+        )  # ou remplacer par * 10 pour avec des dixièmes
+        self.transcription_timer_label.setText(f"{minutes:02}:{sec:02}.{fraction:02}")
 
     def create_right_side(self):
         """
@@ -318,8 +342,7 @@ class TranscriptionPanel(QWidget):
     def update_ui(self):
         self.record_button.setEnabled(parlia_state.is_ready_to_record())
         self.max_duration_combobox.setEnabled(not parlia_state.is_ui_locked())
-        self.status_label.setText(parlia_state.get_status_label())
-        # tu pourras ajouter d'autres .setEnabled(...) ici
+        self.update_status_label()
 
     def update_record_button_state(self):
         self.record_button.setEnabled(parlia_state.is_ready_to_record())
@@ -327,6 +350,28 @@ class TranscriptionPanel(QWidget):
     def closeEvent(self, event):
         try:
             parlia_state.unsubscribe(self.update_ui)
+            whisper_service.cleanup()
         except Exception as e:
             print(f"[Parlia] Erreur lors du désabonnement : {e}")
         super().closeEvent(event)
+
+    def load_stylesheet(self):
+        print("[DEBUG] Chemin absolu actuel :", os.getcwd())
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+        qss_path = os.path.join(base_dir, "assets", "styles", "transcription_style.qss")
+
+        if os.path.exists(qss_path):
+            with open(qss_path, "r", encoding="utf-8") as f:
+                self.setStyleSheet(f.read())
+            print("[STYLE] Fichier QSS chargé avec succès.")
+        else:
+            print("[STYLE] Fichier QSS introuvable :", qss_path)
+
+    def update_status_label(self):
+        text, status_type = parlia_state.get_status_info()
+        self.status_value_label.setText(text)
+
+        # Appliquer dynamiquement la classe CSS
+        self.status_value_label.setObjectName(f"statusLabel_{status_type}")
+        self.status_value_label.style().unpolish(self.status_value_label)
+        self.status_value_label.style().polish(self.status_value_label)
