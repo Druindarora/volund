@@ -4,8 +4,14 @@ import subprocess
 import sys
 import time
 
+SRC_PATH = os.path.abspath("src")
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+
+from src.config.env import is_dev
 
 # Force UTF-8 sur la sortie console si nécessaire
 if sys.stdout.encoding is None or sys.stdout.encoding.lower() != "utf-8":
@@ -84,6 +90,12 @@ class RestartOnChangeHandler(FileSystemEventHandler):
 
 
 def main():
+    if not is_dev():
+        # Mode production : exécution simple, pas de relance
+        subprocess.run([sys.executable, SCRIPT_PATH])
+        return
+
+    # Sinon : mode dev avec surveillance automatique
     event_handler = RestartOnChangeHandler()
     observer = Observer()
     observer.schedule(event_handler, path=SRC_DIR, recursive=True)

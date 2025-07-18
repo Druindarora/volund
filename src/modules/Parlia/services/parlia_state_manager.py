@@ -1,6 +1,9 @@
 # modules/parlia/services/parlia_state_manager.py
 
 
+from config.env import is_dev
+
+
 class ParliaStateManager:
     def __init__(self):
         self.max_duration = 0
@@ -15,9 +18,14 @@ class ParliaStateManager:
         self._subscribers.append(callback)
 
     def notify(self):
-        """Notifie tous les abonnés que l’état a changé."""
-        for cb in self._subscribers:
-            cb()
+        print(f"[ParliaState] Callbacks actifs : {len(self._subscribers)}")
+        for cb in self._subscribers[:]:
+            try:
+                cb()
+            except RuntimeError:
+                self._subscribers.remove(cb)
+            except Exception as e:
+                print(f"[ParliaState] Callback UI cassé : {e}")
 
     # === Setters avec notification ===
 
@@ -38,11 +46,12 @@ class ParliaStateManager:
         self.notify()
 
     def get_status_label(self) -> str:
-        print("=== [DEBUG] get_status_label ===")
-        print(f"[DEBUG] is_transcribing : {self.is_transcribing}")
-        print(f"[DEBUG] is_recording    : {self.is_recording}")
-        print(f"[DEBUG] whisper_ready   : {self.whisper_ready}")
-        print(f"[DEBUG] max_duration    : {self.max_duration}")
+        if is_dev():
+            print("=== [DEBUG] get_status_label ===")
+            print(f"[DEBUG] is_transcribing : {self.is_transcribing}")
+            print(f"[DEBUG] is_recording    : {self.is_recording}")
+            print(f"[DEBUG] whisper_ready   : {self.whisper_ready}")
+            print(f"[DEBUG] max_duration    : {self.max_duration}")
 
         if self.is_transcribing:
             return "Statut : Transcription en cours"
@@ -64,6 +73,10 @@ class ParliaStateManager:
     def is_ui_locked(self) -> bool:
         """Indique si l'interface doit être bloquée (ex: boutons désactivés)."""
         return self.is_recording or self.is_transcribing
+
+    def unsubscribe(self, cb):
+        if cb in self._subscribers:
+            self._subscribers.remove(cb)
 
 
 parlia_state = ParliaStateManager()

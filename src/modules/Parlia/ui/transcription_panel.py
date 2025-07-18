@@ -81,24 +81,27 @@ class TranscriptionPanel(QWidget):
         Toggle the recording state and update the button text/icon.
         """
         if not self.is_recording:
-            # Start recording
+            print("Starting recording...")
             self.is_recording = True
             self.record_button.setText("Stopper")
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop)
             )
-            audio_service.start_recording()  # Start the audio recording service
-            print("Recording started...")  # Placeholder for actual recording logic
+            audio_service.start_recording()
+            print("Recording started...")
         else:
-            # Stop recording
+            print("Stopping recording...")
             self.is_recording = False
             self.record_button.setText("Enregistrer")
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
             )
-            audio_service.stop_recording()  # Stop the audio recording service
-            print("Recording stopped...")  # Placeholder for actual stop logic
-            whisper_service.transcribe(callback=self._on_transcription_done)
+            audio_service.stop_recording()
+            print("Recording stopped...")
+
+            # ⏳ Transcription asynchrone
+            parlia_state.set_transcribing(True)
+            whisper_service.transcribe_async(callback=self._on_transcription_done)
 
     def manage_times(self, layout: QVBoxLayout):
         """
@@ -320,3 +323,10 @@ class TranscriptionPanel(QWidget):
 
     def update_record_button_state(self):
         self.record_button.setEnabled(parlia_state.is_ready_to_record())
+
+    def closeEvent(self, event):
+        try:
+            parlia_state.unsubscribe(self.update_ui)
+        except Exception as e:
+            print(f"[Parlia] Erreur lors du désabonnement : {e}")
+        super().closeEvent(event)

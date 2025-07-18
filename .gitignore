@@ -38,3 +38,4 @@ config/*.json
 
 # Données locales de l'utilisateur
 user_data/
+temp_audio/
