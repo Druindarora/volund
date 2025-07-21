@@ -23,6 +23,13 @@ echo.
 echo ==================================================================
 echo.
 
+:: === [1] POSITION MANUELLE (désactivée par défaut) ===
+:: === Position actuelle : X=-967, Y=0, Largeur=974, Hauteur=1039
+powershell -ExecutionPolicy Bypass -File "move_console.ps1"
+
+:: === [2] LANCEMENT DE VØLUND ===
+
+
 :: Vérifie si un VPN est actif
 echo [CHECK] Vérification VPN...
 ipconfig | findstr /I "ExpressVPN" >> %LOGFILE%
@@ -129,10 +136,28 @@ echo ❌ Environnement virtuel manquant ou incorrect.
 goto PY_DONE
 
 :PY_DONE
-echo Appuie sur une touche pour continuer... fin du Python
-pause > nul
+@REM echo Appuie sur une touche pour continuer... fin du Python
+@REM pause > nul
+
+@REM REM ============================
+@REM REM === [3] POSITION ACTUELLE DE LA FENÊTRE
+@REM echo.
+@REM echo [POSITION] Lecture de la position actuelle de la console...
+@REM powershell -ExecutionPolicy Bypass -File "%~dp0get_console_position.ps1"
 
 
+REM ============================
+REM === [4] RELANCE OPTIONNELLE
+:ask_restart
+set /p userinput=Souhaitez-vous relancer Vølund ? (o/n) :
+if /i "%userinput%"=="o" goto relaunch
+if /i "%userinput%"=="n" goto end
+goto ask_restart
+
+:relaunch
+cls
+call "%~f0"
+goto :eof
 
 :FIN
 echo.

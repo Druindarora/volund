@@ -2,7 +2,6 @@
 
 /* --- Base générale --- */
 QWidget {
-    background-color: #121212;
     color: #E0E0E0;
     font-family: 'Segoe UI', sans-serif;
     font-size: 14px;
@@ -35,7 +34,7 @@ QLabel#statusLabel_neutral {
 
 
 /* --- Zone texte transcription --- */
-QPlainTextEdit {
+/* QPlainTextEdit {
     background-color: #1E1E1E;
     border: 1px solid #3A3A3A;
     border-radius: 6px;
@@ -43,7 +42,7 @@ QPlainTextEdit {
     color: #E0E0E0;
     font-family: Consolas, monospace;
     font-size: 13px;
-}
+} */
 
 /* --- Boutons --- */
 QPushButton {
@@ -85,7 +84,7 @@ QLabel.timerLabel {
 }
 
 /* --- Layouts (si stylisables via wrapper QWidget) --- */
-QGroupBox {
+/* QGroupBox {
     border: 1px solid #3A3A3A;
     margin-top: 10px;
     padding: 8px;
@@ -98,4 +97,4 @@ QGroupBox::title {
     padding: 0 3px 0 3px;
     color: #00BCD4;
     font-weight: bold;
-}
+} */
