@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from modules.parlia import ModuleInfo
+from modules.parlia import ModuleInfo, hotkeys
 from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.action_panel import ActionPanel
 from modules.parlia.ui.settings_panel import SettingsPanel
@@ -20,6 +20,10 @@ class ParliaHome(QWidget):
         super().__init__(main_window)
         self.main_window = main_window
         self._build_ui()
+        hotkeys.start_hotkey_listener(
+            get_main_window=lambda: self.main_window,
+            get_transcription_panel=lambda: self.transcription_panel,
+        )
 
     def _build_ui(self):
         layout = QVBoxLayout()

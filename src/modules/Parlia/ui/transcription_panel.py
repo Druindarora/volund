@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QFont, QTextCharFormat
 from PySide6.QtWidgets import (
     QComboBox,
@@ -24,6 +24,9 @@ from modules.parlia.settings import ParliaSettings
 class TranscriptionPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.model_ready = True  # à remplacer si tu veux mettre une vraie logique
+        # self.model_ready = whisper_service.is_ready()
 
         # Création des layouts
         main_layout = QHBoxLayout()
@@ -60,6 +63,7 @@ class TranscriptionPanel(QWidget):
 
         # Add a record button
         record_button = self.create_record_button()
+        left_layout.addSpacing(10)
         left_layout.addWidget(record_button)
 
         self.update_record_button_state()
@@ -85,10 +89,13 @@ class TranscriptionPanel(QWidget):
 
         return self.record_button
 
+    @Slot()
     def toggle_recording(self):
         """
         Toggle the recording state and update the button text/icon.
         """
+        print("[PANEL] toggle_recording() exécuté")
+
         if not self.is_recording:
             print("Starting recording...")
             self.is_recording = True
