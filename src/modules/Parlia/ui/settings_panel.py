@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -65,37 +66,75 @@ class SettingsPanel(QWidget):
         self._add_model_section()
 
         # Ajouter la section du chemin du dossier
-        self._add_folder_path_section()
+        # self._add_folder_path_section()
 
         # Ajouter la section de la phrase de conclusion
         self._add_conclusion_phrase_section()
 
     def _add_model_section(self):
         """
-        Ajouter la section pour le modèle sélectionné.
+        Réorganise la section modèle : bouton + chemin, puis label + combo.
         """
-        self.current_model_label = QLabel(ParliaSettings.LABEL_CURRENT_MODEL)
+        # Ligne : bouton + chemin
+        folder_line_layout = QHBoxLayout()
+
+        # Bouton pour sélectionner le dossier
+        self.select_folder_button = QPushButton(ParliaSettings.LABEL_CHOOSE_FOLDER)
+        self.select_folder_button.clicked.connect(self._select_model_folder)
+        folder_line_layout.addWidget(self.select_folder_button)
+
+        # Label pour afficher le chemin du dossier
+        self.path_label = QLabel()
+        self.path_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self._update_path_label()
+        folder_line_layout.addWidget(self.path_label)
+
+        self.main_layout.addLayout(folder_line_layout)
+
+        # Espacement vertical léger
+        self.main_layout.addSpacing(10)
+
+        # Label pour le modèle sélectionné
+        self.current_model_label = QLabel()
+        self._update_model_label()
+        self.main_layout.addWidget(self.current_model_label)
+
+        # Combo box pour la liste des modèles
+        self.model_combobox = QComboBox()
+        self.model_combobox.setVisible(False)
+        self.model_combobox.currentTextChanged.connect(self._on_model_selected)
+
+        if self.current_folder and os.path.isdir(self.current_folder):
+            self._update_model_list()
+            self._set_initial_model_selection()
+
+        self.main_layout.addWidget(self.model_combobox)
+
+    def _update_path_label(self):
+        """Met à jour le texte du label du chemin du dossier."""
+        if self.current_folder:
+            self.path_label.setText(
+                ParliaSettings.LABEL_CURRENT_FOLDER.format(folder=self.current_folder)
+            )
+        else:
+            self.path_label.setText("")
+
+    def _update_model_label(self):
+        """Met à jour le texte du label du modèle sélectionné."""
         if self.selected_model_name:
             self.current_model_label.setText(
                 ParliaSettings.LABEL_CURRENT_MODEL.format(
                     model_name=self.selected_model_name
                 )
             )
-        self.main_layout.addWidget(self.current_model_label)
+        else:
+            self.current_model_label.setText(ParliaSettings.LABEL_CURRENT_MODEL)
 
-        self.select_folder_button = QPushButton(ParliaSettings.LABEL_CHOOSE_FOLDER)
-        self.select_folder_button.clicked.connect(self._select_model_folder)
-        self.main_layout.addWidget(self.select_folder_button)
-
-        self.model_combobox = QComboBox()
-        self.model_combobox.setVisible(False)
-        self.model_combobox.currentTextChanged.connect(self._on_model_selected)
-        if self.current_folder and os.path.isdir(self.current_folder):
-            self._update_model_list()
-            if self.selected_model_name in self.model_list:
-                self.model_combobox.setCurrentText(self.selected_model_name)
-                self.model_combobox.setVisible(True)
-        self.main_layout.addWidget(self.model_combobox)
+    def _set_initial_model_selection(self):
+        """Configure la sélection initiale dans la combo box des modèles."""
+        if self.selected_model_name in self.model_list:
+            self.model_combobox.setCurrentText(self.selected_model_name)
+            self.model_combobox.setVisible(True)
 
     def _add_folder_path_section(self):
         """
@@ -111,11 +150,14 @@ class SettingsPanel(QWidget):
 
     def _add_conclusion_phrase_section(self):
         """
-        Add a section to configure the 'phrase de conclusion'.
+        Ajoute une section simple mais claire pour gérer la phrase de conclusion.
         """
         conclusion_layout = QVBoxLayout()
 
-        # Checkbox for automatic inclusion
+        # Espacement avant bloc
+        self.main_layout.addSpacing(15)
+
+        # 1. Checkbox d'activation
         self.include_conclusion_checkbox = QCheckBox(
             ParliaSettings.LABEL_INCLUDE_CONCLUSION
         )
@@ -123,40 +165,41 @@ class SettingsPanel(QWidget):
             self._on_include_conclusion_changed
         )
 
-        # Désactiver les signaux pendant l'initialisation pour éviter les erreurs
         self.include_conclusion_checkbox.blockSignals(True)
         if self.include_conclusion_state is not None:
             self.include_conclusion_checkbox.setChecked(self.include_conclusion_state)
         self.include_conclusion_checkbox.blockSignals(False)
-
         conclusion_layout.addWidget(self.include_conclusion_checkbox)
 
-        # Label for current phrases
-        current_phrases_label = QLabel(ParliaSettings.LABEL_CURRENT_CONCLUSION_PHRASES)
-        conclusion_layout.addWidget(current_phrases_label)
+        # 2. Label : phrase actuelle
+        current_label = QLabel("Phrase actuelle :")
+        current_label.setStyleSheet("font-weight: bold;")
+        conclusion_layout.addWidget(current_label)
 
-        # Non-editable field for current phrase
-        self.current_phrase_display = QLineEdit(
-            ParliaSettings.LABEL_NO_CURRENT_CONCLUSION
-        )
+        self.current_phrase_display = QLineEdit()
         self.current_phrase_display.setReadOnly(True)
+        self.current_phrase_display.setStyleSheet("color: gray;")
         conclusion_layout.addWidget(self.current_phrase_display)
 
-        # Button to randomize or reset the phrase
-        self.new_phrase_button = QPushButton(ParliaSettings.LABEL_NEW_PHRASE)
-        self.new_phrase_button.clicked.connect(self._on_new_phrase_clicked)
-        conclusion_layout.addWidget(self.new_phrase_button)
+        # 3. Label : nouvelle phrase
+        custom_label = QLabel("Nouvelle phrase :")
+        custom_label.setStyleSheet("font-weight: bold;")
+        conclusion_layout.addWidget(custom_label)
 
-        # Editable field for custom phrase
         self.custom_phrase_input = QLineEdit()
         self.custom_phrase_input.setPlaceholderText(
             ParliaSettings.LABEL_PLACEHOLDER_CUSTOM_PHRASE
         )
         conclusion_layout.addWidget(self.custom_phrase_input)
 
+        # 4. Bouton d’enregistrement
+        self.new_phrase_button = QPushButton("💾 Enregistrer la phrase")
+        self.new_phrase_button.clicked.connect(self._on_new_phrase_clicked)
+        conclusion_layout.addWidget(self.new_phrase_button)
+
         self.main_layout.addLayout(conclusion_layout)
 
-        # Appliquer manuellement l'état une fois tous les éléments créés
+        # Appliquer l’état initial
         self._on_include_conclusion_changed(
             Qt.CheckState.Checked
             if self.include_conclusion_state
