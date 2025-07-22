@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 
 from PySide6.QtCore import Qt, Slot
@@ -19,6 +18,7 @@ from modules.parlia.services.parlia_data import get_max_duration, set_max_durati
 from modules.parlia.services.parlia_state_manager import parlia_state
 from modules.parlia.services.whisper_service import whisper_service
 from modules.parlia.settings import ParliaSettings
+from modules.parlia.utils.stylesheet_loader import load_qss_for
 
 
 class TranscriptionPanel(QWidget):
@@ -35,11 +35,11 @@ class TranscriptionPanel(QWidget):
         main_layout.addWidget(self.left_panel)
         main_layout.addWidget(self.right_panel)
         self.setLayout(main_layout)
-        self.load_stylesheet()
+        load_qss_for(self)
 
         # ✅ Maintenant que tous les attributs sont là, on peut s’abonner en toute sécurité
-        parlia_state.subscribe(self.update_ui)
-        self.update_ui()
+        parlia_state.register_ui_component(self)
+        self.apply_ui_state()
 
     def create_left_side(self):
         """
@@ -351,33 +351,16 @@ class TranscriptionPanel(QWidget):
         print(f"Transcription text retrieved: {text}")
         return text
 
-    def update_ui(self):
-        self.record_button.setEnabled(parlia_state.is_ready_to_record())
-        self.max_duration_combobox.setEnabled(not parlia_state.is_ui_locked())
-        self.update_status_label()
-
     def update_record_button_state(self):
         self.record_button.setEnabled(parlia_state.is_ready_to_record())
 
     def closeEvent(self, event):
         try:
-            parlia_state.unsubscribe(self.update_ui)
+            parlia_state.unregister_ui_component(self)
             whisper_service.cleanup()
         except Exception as e:
             print(f"[Parlia] Erreur lors du désabonnement : {e}")
         super().closeEvent(event)
-
-    def load_stylesheet(self):
-        print("[DEBUG] Chemin absolu actuel :", os.getcwd())
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-        qss_path = os.path.join(base_dir, "assets", "styles", "transcription_style.qss")
-
-        if os.path.exists(qss_path):
-            with open(qss_path, "r", encoding="utf-8") as f:
-                self.setStyleSheet(f.read())
-            print("[STYLE] Fichier QSS chargé avec succès.")
-        else:
-            print("[STYLE] Fichier QSS introuvable :", qss_path)
 
     def update_status_label(self):
         text, status_type = parlia_state.get_status_info()
@@ -387,3 +370,8 @@ class TranscriptionPanel(QWidget):
         self.status_value_label.setObjectName(f"statusLabel_{status_type}")
         self.status_value_label.style().unpolish(self.status_value_label)
         self.status_value_label.style().polish(self.status_value_label)
+
+    def apply_ui_state(self):
+        self.record_button.setEnabled(parlia_state.is_ready_to_record())
+        self.max_duration_combobox.setEnabled(not parlia_state.is_ui_locked())
+        self.update_status_label()

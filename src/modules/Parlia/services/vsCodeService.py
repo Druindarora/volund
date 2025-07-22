@@ -6,6 +6,7 @@ import pygetwindow as gw
 import pyperclip
 
 from modules.parlia.config import config
+from modules.parlia.services.parlia_data import get_prompt
 from modules.parlia.services.utils import run_countdown
 
 # --- Constants moved to config ---
@@ -110,7 +111,9 @@ def focus_vscode_and_refacto(text: str, status_callback=None, countdown_callback
             )
         return
 
-    text = f"{config.focus_and_refacto} {text.strip()}"
+    prompt_text = get_prompt("prompt_refactor")
+
+    text = f"{prompt_text} {text.strip()}"
 
     focus_and_paste_in_vscode(
         text=text,
@@ -134,7 +137,7 @@ def explain_code_to_vscode(
         if method_name:
             prompt = f"Expliquez la méthode suivante : {method_name}"
         else:
-            prompt = f"Expliquez le fichier"
+            prompt = get_prompt("prompt_explain")
 
         pyperclip.copy(prompt)
 
@@ -159,7 +162,7 @@ def analyze_code_to_vscode(status_callback=None, countdown_callback=None):
         status_callback (callable, optional): Fonction de rappel pour afficher les messages de statut.
     """
     try:
-        prompt = "Peux-tu analyser ce fichier ? Je veux un retour sur : la lisibilité et la structure du code la clarté des noms (méthodes, variables)les éventuelles mauvaises pratiques ou erreurs les opportunités de refactorisation Termine par une note globale de qualité sur 10 et des suggestions d'amélioration si besoin."
+        prompt = get_prompt("prompt_analyze")
 
         pyperclip.copy(prompt)
 

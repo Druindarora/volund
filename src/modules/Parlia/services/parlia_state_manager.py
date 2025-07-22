@@ -12,6 +12,7 @@ class ParliaStateManager:
         self.is_transcribing = False
 
         self._subscribers = []
+        self._ui_components = []
 
     def subscribe(self, callback):
         """Permet à un composant de s'abonner aux changements d'état."""
@@ -32,18 +33,22 @@ class ParliaStateManager:
     def set_max_duration(self, duration: int):
         self.max_duration = duration
         self.notify()
+        self._refresh_ui_state()
 
     def set_whisper_ready(self, ready: bool):
         self.whisper_ready = ready
         self.notify()
+        self._refresh_ui_state()
 
     def set_recording(self, state: bool):
         self.is_recording = state
         self.notify()
+        self._refresh_ui_state()
 
     def set_transcribing(self, state: bool):
         self.is_transcribing = state
         self.notify()
+        self._refresh_ui_state()
 
     def get_status_info(self) -> tuple[str, str]:
         """
@@ -81,6 +86,21 @@ class ParliaStateManager:
     def unsubscribe(self, cb):
         if cb in self._subscribers:
             self._subscribers.remove(cb)
+
+    def register_ui_component(self, panel):
+        if panel not in self._ui_components:
+            self._ui_components.append(panel)
+
+    def unregister_ui_component(self, panel):
+        if panel in self._ui_components:
+            self._ui_components.remove(panel)
+
+    def _refresh_ui_state(self):
+        for component in self._ui_components[:]:
+            try:
+                component.apply_ui_state()
+            except Exception as e:
+                print(f"[ParliaState] UI update échouée pour {component} : {e}")
 
 
 parlia_state = ParliaStateManager()

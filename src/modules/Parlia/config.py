@@ -33,17 +33,6 @@ class ParliaConfig:
         return Timeouts()
 
     @property
-    def focus_and_code(self) -> str:
-        return "Analyse tous les commentaires du fichier et code ce qui est demandé, sans modifier ce qui ne l'est pas."
-
-    @property
-    def focus_and_refacto(self) -> str:
-        return (
-            "Refactorise uniquement la méthode suivante pour la rendre plus claire, "
-            "plus lisible ou plus efficace, sans changer son comportement."
-        )
-
-    @property
     def vscode_window_title(self) -> str:
         return "Visual Studio Code"
 

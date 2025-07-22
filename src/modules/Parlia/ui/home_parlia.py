@@ -8,11 +8,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from modules.parlia import ModuleInfo, hotkeys
+from modules.parlia import ModuleInfo
 from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.action_panel import ActionPanel
 from modules.parlia.ui.settings_panel import SettingsPanel
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
+from modules.parlia.utils import hotkeys
 
 
 class ParliaHome(QWidget):

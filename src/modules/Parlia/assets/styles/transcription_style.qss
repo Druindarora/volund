@@ -8,13 +8,6 @@ QWidget {
 }
 
 /* --- Labels et titres --- */
-QLabel#statusLabel {
-    font-weight: bold;
-    padding: 6px 12px;
-    border-radius: 4px;
-    background-color: #2A2A2A;
-    color: #FFC107; /* jaune par défaut */
-}
 
 QLabel#statusLabel_ready {
     color: #4CAF50;

@@ -1,7 +1,6 @@
 from threading import Thread
 
 import keyboard
-import win32gui
 from PySide6.QtCore import QMetaObject, Qt
 
 

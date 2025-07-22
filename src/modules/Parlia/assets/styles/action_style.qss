@@ -1,0 +1,100 @@
+/* Statut prêt en vert */
+QLabel {
+    font-weight: bold;
+}
+QLabel:!disabled {
+    color: green;
+}
+
+/* Ligne 1 — Copier / Fichier (Vert & Bleu clair) */
+#chatRelayButton {
+    background-color: #81C784;
+    color: black;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+#chatRelayButton:hover {
+    background-color: #66BB6A;
+}
+
+#copyTextButton {
+    background-color: #81C784;
+    color: black;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+#copyTextButton:hover {
+    background-color: #66BB6A;
+}
+
+#addFilesButton {
+    background-color: #64B5F6;
+    color: black;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+#addFilesButton:hover {
+    background-color: #42A5F5;
+}
+
+/* Ligne 2 — Focus (Jaune / Orange) */
+#focusChatGPTButton {
+    background-color: #FFD54F;
+    color: black;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+#focusChatGPTButton:hover {
+    background-color: #FFCA28;
+}
+
+#focusVSCodeButton {
+    background-color: #FFD54F;
+    color: black;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+#focusVSCodeButton:hover {
+    background-color: #FFCA28;
+}
+
+#focusAndCodeButton {
+    background-color: #FFB74D;
+    color: black;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+#focusAndCodeButton:hover {
+    background-color: #FFA726;
+}
+
+/* Ligne 3 — Traitement Code (Bleu vif) */
+#focusAndRefactoButton,
+#explainCodeButton,
+#analyzeCodeButton,
+#generateTestsButton {
+    background-color: #90CAF9;
+    color: black;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+#focusAndRefactoButton:hover,
+#explainCodeButton:hover,
+#analyzeCodeButton:hover,
+#generateTestsButton:hover {
+    background-color: #64B5F6;
+}
+
+#focusAndRefactoButton:disabled,
+#focusAndCodeButton:disabled,
+#focusVSCodeButton:disabled,
+#focusChatGPTButton:disabled,
+#addFilesButton:disabled,
+#copyTextButton:disabled,
+#chatRelayButton:disabled,
+#explainCodeButton:disabled,
+#analyzeCodeButton:disabled,
+#generateTestsButton:disabled {
+    background-color: #9e9e9e;
+    color: #eeeeee;
+}
