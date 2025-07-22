@@ -78,6 +78,7 @@ class TranscriptionPanel(QWidget):
         self.is_recording = False  # Initial recording state
 
         self.record_button = QPushButton(ParliaSettings.LABEL_RECORD)
+        self.record_button.setObjectName("recordButton")
         self.record_button.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
         )
@@ -86,7 +87,6 @@ class TranscriptionPanel(QWidget):
         )  # Désactivé par défaut
 
         self.record_button.clicked.connect(self.toggle_recording)
-
         return self.record_button
 
     @Slot()
@@ -100,10 +100,12 @@ class TranscriptionPanel(QWidget):
             print("Starting recording...")
             self.is_recording = True
             self.record_button.setText(ParliaSettings.LABEL_STOP)
-            self.record_button.setObjectName("recordButton")
+            self.record_button.setObjectName("stopButton")
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop)
             )
+            self.record_button.style().unpolish(self.record_button)
+            self.record_button.style().polish(self.record_button)
             audio_service.start_recording()
             audio_service.connect_timer(self.update_timer_label)
             print("Recording started...")
@@ -111,10 +113,12 @@ class TranscriptionPanel(QWidget):
             print("Stopping recording...")
             self.is_recording = False
             self.record_button.setText(ParliaSettings.LABEL_RECORD)
-            self.record_button.setObjectName("stopButton")
+            self.record_button.setObjectName("recordButton")
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
             )
+            self.record_button.style().unpolish(self.record_button)
+            self.record_button.style().polish(self.record_button)
             audio_service.stop_recording()
             print("Recording stopped...")
 
