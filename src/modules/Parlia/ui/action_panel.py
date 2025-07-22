@@ -14,6 +14,7 @@ from modules.parlia.services.vsCodeService import (
     focus_vscode_and_refacto,
     focus_vscode_qt,
 )
+from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 
 
@@ -26,7 +27,7 @@ class ActionPanel(QWidget):
         main_layout = QVBoxLayout()
 
         # Add status label at the top
-        self.status_label = QLabel("Prêt")
+        self.status_label = QLabel(ParliaSettings.LABEL_READY)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.status_label)
 
@@ -59,7 +60,7 @@ class ActionPanel(QWidget):
         """
         Create the "Copier [ChatRelay]" button.
         """
-        button = QPushButton("Copier [ChatRelay]")
+        button = QPushButton(ParliaSettings.LABEL_CHATRELAY)
         button.clicked.connect(copy_chatrelay_text)
         return button
 
@@ -67,7 +68,7 @@ class ActionPanel(QWidget):
         """
         Create the "Copier le texte" button.
         """
-        button = QPushButton("Copier le texte")
+        button = QPushButton(ParliaSettings.LABEL_COPY_TEXT)
         button.clicked.connect(lambda: copy_text(self.transcription_panel))
         return button
 
@@ -78,7 +79,7 @@ class ActionPanel(QWidget):
         """
         layout = QHBoxLayout()
 
-        button_add_files = QPushButton("Ajouter des fichiers à la requête")
+        button_add_files = QPushButton(ParliaSettings.LABEL_ADD_FILES)
         button_add_files.clicked.connect(
             lambda: add_files_to_text_area(self.transcription_panel.transcription_text)
         )
@@ -109,7 +110,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus vers ChatGPT" button.
         """
-        button = QPushButton("Focus ChatGPT")
+        button = QPushButton(ParliaSettings.LABEL_FOCUS_CHATGPT)
         button.clicked.connect(
             lambda: send_text_to_chatgpt(
                 text=self.transcription_panel.get_transcription_text(),
@@ -122,7 +123,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus vers VS Code" button.
         """
-        button = QPushButton("Focus VSC")
+        button = QPushButton(ParliaSettings.LABEL_FOCUS_VSCODE)
         button.clicked.connect(
             lambda: focus_vscode_qt(
                 text=self.transcription_panel.get_transcription_text(),
@@ -136,7 +137,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus et Code" button.
         """
-        button = QPushButton("Focus VSC et Code")
+        button = QPushButton(ParliaSettings.LABEL_FOCUS_AND_CODE)
         button.clicked.connect(
             lambda: focus_and_paste_in_vscode(
                 text=config.focus_and_code,
@@ -151,7 +152,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus and Refacto" button.
         """
-        button = QPushButton("Focus VSC et Refacto")
+        button = QPushButton(ParliaSettings.LABEL_FOCUS_AND_REFACTO)
 
         button.clicked.connect(
             lambda: focus_vscode_and_refacto(
@@ -166,7 +167,7 @@ class ActionPanel(QWidget):
         """
         Create the "Expliquer le code" button.
         """
-        button = QPushButton("Expliquer le code")
+        button = QPushButton(ParliaSettings.LABEL_EXPLAIN_CODE)
         button.clicked.connect(
             lambda: explain_code_to_vscode(
                 method_name=self.transcription_panel.get_transcription_text(),
@@ -180,7 +181,7 @@ class ActionPanel(QWidget):
         """
         Create the "Analyser le code" button.
         """
-        button = QPushButton("Analyser le code")
+        button = QPushButton(ParliaSettings.LABEL_ANALYZE_CODE)
         button.clicked.connect(
             lambda: analyze_code_to_vscode(
                 status_callback=self.show_status_message,

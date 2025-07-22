@@ -18,6 +18,7 @@ from modules.parlia.services.audioService import audio_service
 from modules.parlia.services.parlia_data import get_max_duration, set_max_duration
 from modules.parlia.services.parlia_state_manager import parlia_state
 from modules.parlia.services.whisper_service import whisper_service
+from modules.parlia.settings import ParliaSettings
 
 
 class TranscriptionPanel(QWidget):
@@ -46,7 +47,7 @@ class TranscriptionPanel(QWidget):
 
         # Add a status label
         status_layout = QHBoxLayout()
-        static_status_label = QLabel("Statut : ")
+        static_status_label = QLabel(ParliaSettings.LABEL_STATUT)
         self.status_value_label = QLabel()
 
         self.status_value_label.setObjectName("statusLabel")
@@ -72,7 +73,7 @@ class TranscriptionPanel(QWidget):
         """
         self.is_recording = False  # Initial recording state
 
-        self.record_button = QPushButton("Enregistrer")
+        self.record_button = QPushButton(ParliaSettings.LABEL_RECORD)
         self.record_button.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
         )
@@ -91,7 +92,7 @@ class TranscriptionPanel(QWidget):
         if not self.is_recording:
             print("Starting recording...")
             self.is_recording = True
-            self.record_button.setText("Stopper")
+            self.record_button.setText(ParliaSettings.LABEL_STOP)
             self.record_button.setObjectName("recordButton")
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop)
@@ -102,7 +103,7 @@ class TranscriptionPanel(QWidget):
         else:
             print("Stopping recording...")
             self.is_recording = False
-            self.record_button.setText("Enregistrer")
+            self.record_button.setText(ParliaSettings.LABEL_RECORD)
             self.record_button.setObjectName("stopButton")
             self.record_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
@@ -136,7 +137,7 @@ class TranscriptionPanel(QWidget):
         Create the max duration section with a label and combobox.
         Load saved duration from UserDataManager and save changes to parlia.jsonData.
         """
-        max_duration_label = QLabel("Durée max :")
+        max_duration_label = QLabel(ParliaSettings.LABEL_MAX_DURATION)
         self.max_duration_combobox = QComboBox()
 
         self._populate_duration_options()
@@ -156,12 +157,12 @@ class TranscriptionPanel(QWidget):
         Populate the combobox with predefined duration options.
         """
         self.duration_options = {
-            "0": "Aucun temps",
-            "1": "1 minute",
-            "2": "2 minutes",
-            "5": "5 minutes",
-            "10": "10 minutes",
-            "15": "15 minutes",
+            "0": ParliaSettings.LABEL_NO_DURATION,
+            "1": ParliaSettings.LABEL_DURATION_1_MIN,
+            "2": ParliaSettings.LABEL_DURATION_2_MIN,
+            "5": ParliaSettings.LABEL_DURATION_5_MIN,
+            "10": ParliaSettings.LABEL_DURATION_10_MIN,
+            "15": ParliaSettings.LABEL_DURATION_15_MIN,
         }
 
         for key, value in self.duration_options.items():
@@ -196,8 +197,8 @@ class TranscriptionPanel(QWidget):
         """
         Create the recording time section with a label and timer.
         """
-        recording_time_label = QLabel("Temps d'enregistrement :")
-        self.recording_timer_label = QLabel("00:00")
+        recording_time_label = QLabel(ParliaSettings.LABEL_RECORDING_TIME)
+        self.recording_timer_label = QLabel(ParliaSettings.LABEL_TIMER_DEFAULT)
         self.recording_timer_label.setProperty("class", "timerLabel")
 
         recording_time_layout = QHBoxLayout()
@@ -212,8 +213,8 @@ class TranscriptionPanel(QWidget):
         self.recording_timer_label.setText(f"{minutes:02}:{sec:02}")
 
     def create_transcription_time_section(self):
-        transcription_time_label = QLabel("Temps de transcription :")
-        self.transcription_timer_label = QLabel("00:00")
+        transcription_time_label = QLabel(ParliaSettings.LABEL_TRANSCRIPTION_TIME)
+        self.transcription_timer_label = QLabel(ParliaSettings.LABEL_TIMER_DEFAULT)
         self.transcription_timer_label.setProperty("class", "timerLabel")
 
         transcription_time_layout = QHBoxLayout()
@@ -276,7 +277,7 @@ class TranscriptionPanel(QWidget):
         Create and configure a QTextEdit for transcription results.
         """
         transcription_text = QTextEdit()
-        transcription_text.setPlaceholderText("Texte transcrit...")
+        transcription_text.setPlaceholderText(ParliaSettings.LABEL_TRANSCRIBED_TEXT)
         transcription_text.setAcceptRichText(True)
         transcription_text.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         transcription_text.setFont(QFont("Courier New", 10))  # Monospace font

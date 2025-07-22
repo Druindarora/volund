@@ -1,8 +1,6 @@
 # env.py — gestion de l'environnement de l'application
 from utils.settings import Settings
 
-ENVIRONMENTS = ("dev", "prod", "test")
-
 
 def is_dev() -> bool:
     return Settings.ENV == "dev"

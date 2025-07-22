@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 )
 
 from modules.parlia import ModuleInfo
+from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.action_panel import ActionPanel
 from modules.parlia.ui.settings_panel import SettingsPanel
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
@@ -71,7 +72,7 @@ class ParliaHome(QWidget):
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        label = QLabel("⚙️ Paramètres Whisper")
+        label = QLabel(ParliaSettings.LABEL_SETTINGS_TITLE)
         label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
 
@@ -92,7 +93,7 @@ class ParliaHome(QWidget):
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        label = QLabel("📝 Transcription")
+        label = QLabel(ParliaSettings.LABEL_TRANSCRIPTION_TITLE)
         label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
 
@@ -112,7 +113,7 @@ class ParliaHome(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Placeholder pour le contenu futur
-        label = QLabel("🔧 Actions")
+        label = QLabel(ParliaSettings.LABEL_ACTIONS_TITLE)
         label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
 

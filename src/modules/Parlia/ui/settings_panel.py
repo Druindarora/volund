@@ -1,10 +1,3 @@
-# 🧩 Composant : SettingsPanel
-# Ce widget représente le panneau de configuration des modèles Whisper.
-# Il est intégré dans ParliaHome, et gère :
-# - la sélection du dossier contenant les modèles
-# - l'affichage des modèles disponibles dans ce dossier
-# - le choix du modèle à charger
-
 import os
 
 from PySide6.QtCore import Qt
@@ -33,6 +26,7 @@ from modules.parlia.services.parlia_data import (
     set_model_folder_path,
     set_model_name,
 )
+from modules.parlia.settings import ParliaSettings
 
 
 class SettingsPanel(QWidget):
@@ -80,14 +74,16 @@ class SettingsPanel(QWidget):
         """
         Ajouter la section pour le modèle sélectionné.
         """
-        self.current_model_label = QLabel("Modèle en cours : Aucun")
+        self.current_model_label = QLabel(ParliaSettings.LABEL_CURRENT_MODEL)
         if self.selected_model_name:
             self.current_model_label.setText(
-                f"Modèle en cours : {self.selected_model_name}"
+                ParliaSettings.LABEL_CURRENT_MODEL.format(
+                    model_name=self.selected_model_name
+                )
             )
         self.main_layout.addWidget(self.current_model_label)
 
-        self.select_folder_button = QPushButton("Choisir dossier")
+        self.select_folder_button = QPushButton(ParliaSettings.LABEL_CHOOSE_FOLDER)
         self.select_folder_button.clicked.connect(self._select_model_folder)
         self.main_layout.addWidget(self.select_folder_button)
 
@@ -108,7 +104,9 @@ class SettingsPanel(QWidget):
         self.path_label = QLabel("")
         self.path_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         if self.current_folder:
-            self.path_label.setText(f"Dossier sélectionné : {self.current_folder}")
+            self.path_label.setText(
+                ParliaSettings.LABEL_CHOOSE_FOLDER.format(folder=self.current_folder)
+            )
         self.main_layout.addWidget(self.path_label)
 
     def _add_conclusion_phrase_section(self):
@@ -119,7 +117,7 @@ class SettingsPanel(QWidget):
 
         # Checkbox for automatic inclusion
         self.include_conclusion_checkbox = QCheckBox(
-            "Inclure automatiquement la phrase de conclusion"
+            ParliaSettings.LABEL_INCLUDE_CONCLUSION
         )
         self.include_conclusion_checkbox.stateChanged.connect(
             self._on_include_conclusion_changed
@@ -134,23 +132,25 @@ class SettingsPanel(QWidget):
         conclusion_layout.addWidget(self.include_conclusion_checkbox)
 
         # Label for current phrases
-        current_phrases_label = QLabel("Phrases de conclusion actuelles :")
+        current_phrases_label = QLabel(ParliaSettings.LABEL_CURRENT_CONCLUSION_PHRASES)
         conclusion_layout.addWidget(current_phrases_label)
 
         # Non-editable field for current phrase
-        self.current_phrase_display = QLineEdit("Aucun")
+        self.current_phrase_display = QLineEdit(
+            ParliaSettings.LABEL_NO_CURRENT_CONCLUSION
+        )
         self.current_phrase_display.setReadOnly(True)
         conclusion_layout.addWidget(self.current_phrase_display)
 
         # Button to randomize or reset the phrase
-        self.new_phrase_button = QPushButton("Nouvelle phrase")
+        self.new_phrase_button = QPushButton(ParliaSettings.LABEL_NEW_PHRASE)
         self.new_phrase_button.clicked.connect(self._on_new_phrase_clicked)
         conclusion_layout.addWidget(self.new_phrase_button)
 
         # Editable field for custom phrase
         self.custom_phrase_input = QLineEdit()
         self.custom_phrase_input.setPlaceholderText(
-            "Entrez votre phrase de conclusion personnalisée ici..."
+            ParliaSettings.LABEL_PLACEHOLDER_CUSTOM_PHRASE
         )
         conclusion_layout.addWidget(self.custom_phrase_input)
 
@@ -181,9 +181,13 @@ class SettingsPanel(QWidget):
             if conclusion_text:
                 self.current_phrase_display.setText(conclusion_text)
             else:
-                self.current_phrase_display.setText("Aucun")
+                self.current_phrase_display.setText(
+                    ParliaSettings.LABEL_NO_CURRENT_CONCLUSION
+                )
         else:
-            self.current_phrase_display.setText("Aucun")
+            self.current_phrase_display.setText(
+                ParliaSettings.LABEL_NO_CURRENT_CONCLUSION
+            )
 
     def _on_new_phrase_clicked(self):
         print("New phrase button clicked")
@@ -208,7 +212,9 @@ class SettingsPanel(QWidget):
         """
         Méthode pour gérer la sélection du dossier contenant les modèles.
         """
-        folder = QFileDialog.getExistingDirectory(self, "Choisir un dossier")
+        folder = QFileDialog.getExistingDirectory(
+            self, ParliaSettings.LABEL_CHOOSE_FOLDER
+        )
         if folder:
             self.current_folder = folder
 
@@ -216,7 +222,9 @@ class SettingsPanel(QWidget):
             set_model_folder_path(folder)
 
             # Mettre à jour l’étiquette pour afficher le chemin choisi
-            self.path_label.setText(f"Dossier sélectionné : {folder}")
+            self.path_label.setText(
+                ParliaSettings.LABEL_CURRENT_FOLDER.format(folder=folder)
+            )
 
             # Appeler _update_model_list() pour lister les fichiers de modèles du dossier
             self._update_model_list()
@@ -230,7 +238,7 @@ class SettingsPanel(QWidget):
         - Sinon, ne sélectionne rien.
         """
         if not self.current_folder or not os.path.isdir(self.current_folder):
-            self.path_label.setText("Erreur : Dossier invalide.")
+            self.path_label.setText(ParliaSettings.LABEL_ERROR_INVALID_FOLDER)
             self.model_combobox.setVisible(False)
             return
 
@@ -242,7 +250,7 @@ class SettingsPanel(QWidget):
         if self.model_list:
             self.model_combobox.clear()
             self.model_combobox.addItem(
-                "Aucun modèle sélectionné", userData=None
+                ParliaSettings.LABEL_NO_MODEL_SELECTED, userData=None
             )  # Valeur neutre
             self.model_combobox.addItems(self.model_list)
             self.model_combobox.setVisible(True)
@@ -259,7 +267,7 @@ class SettingsPanel(QWidget):
                 pass
         else:
             self.model_combobox.setVisible(False)
-            self.path_label.setText("Aucun modèle trouvé dans le dossier.")
+            self.path_label.setText(ParliaSettings.LABEL_NO_MODEL_SELECTED)
 
     def _on_model_selected(self, model_name):
         """
@@ -268,10 +276,10 @@ class SettingsPanel(QWidget):
         - Sinon : charge le modèle choisi.
         Met à jour l'affichage et les boutons d’enregistrement.
         """
-        if model_name == "Aucun modèle sélectionné":
+        if model_name == ParliaSettings.LABEL_NO_MODEL_SELECTED:
             print("[INFO] Aucun modèle sélectionné. Déchargement du modèle en cours.")
             unload_model()
-            no_model_name = "Aucun modèle sélectionné"
+            no_model_name = ParliaSettings.LABEL_NO_MODEL_SELECTED
             set_model_name(no_model_name)
             self.current_model_label.setText(no_model_name)
 
@@ -284,7 +292,9 @@ class SettingsPanel(QWidget):
             print(f"Modèle sélectionné _on_model_selected : {model_name}")
             set_model_name(model_name)
             load_model(model_name)
-            self.current_model_label.setText(f"Modèle en cours : {model_name}")
+            self.current_model_label.setText(
+                ParliaSettings.LABEL_CURRENT_MODEL.format(model_name=model_name)
+            )
 
             if self.update_record_callback:
                 self.update_record_callback()
