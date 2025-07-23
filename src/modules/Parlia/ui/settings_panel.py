@@ -100,7 +100,10 @@ class SettingsPanel(QWidget):
         self.main_layout.addWidget(self.current_model_label)
 
         # Combo box pour la liste des modèles
-        self.model_combobox = QComboBox()
+        self.model_combobox = QComboBox(self)  # ✅ Parent explicite
+        self.model_combobox.setWindowFlags(
+            Qt.WindowType.Widget
+        )  # ✅ Corrigé : Qt.Widget → Qt.WindowType.Widget
         self.model_combobox.setVisible(False)
         self.model_combobox.currentTextChanged.connect(self._on_model_selected)
 
