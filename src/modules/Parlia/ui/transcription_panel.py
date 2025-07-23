@@ -180,20 +180,16 @@ class TranscriptionPanel(QWidget):
             self.max_duration_combobox.addItem(value, key)
 
     def _load_saved_duration(self):
-        """
-        Load the saved duration from UserDataManager and set it in the combobox.
-        """
         saved_duration_key = get_max_duration()
         print(f"Loaded saved duration key: {saved_duration_key}")
-        if saved_duration_key.isdigit():
-            parlia_state.set_max_duration(int(saved_duration_key))
 
+        # DÉFÉRER le set_max_duration si les widgets ne sont pas encore prêts
         if saved_duration_key and saved_duration_key in self.duration_options:
             index = self.max_duration_combobox.findData(saved_duration_key)
             if index != -1:
                 self.max_duration_combobox.setCurrentIndex(index)
         else:
-            self.max_duration_combobox.setCurrentIndex(0)  # Default to "Aucun temps"
+            self.max_duration_combobox.setCurrentIndex(0)
 
     def save_max_duration(self):
         """
@@ -355,11 +351,12 @@ class TranscriptionPanel(QWidget):
         self.record_button.setEnabled(parlia_state.is_ready_to_record())
 
     def closeEvent(self, event):
+        self.__deleted__ = True
         try:
             parlia_state.unregister_ui_component(self)
             whisper_service.cleanup()
         except Exception as e:
-            print(f"[Parlia] Erreur lors du désabonnement : {e}")
+            print(f"[Panel] Erreur lors du désabonnement : {e}")
         super().closeEvent(event)
 
     def update_status_label(self):
@@ -372,6 +369,9 @@ class TranscriptionPanel(QWidget):
         self.status_value_label.style().polish(self.status_value_label)
 
     def apply_ui_state(self):
+        if not hasattr(self, "record_button"):
+            print("[WARN] apply_ui_state() appelé trop tôt")
+            return
         self.record_button.setEnabled(parlia_state.is_ready_to_record())
         self.max_duration_combobox.setEnabled(not parlia_state.is_ui_locked())
         self.update_status_label()

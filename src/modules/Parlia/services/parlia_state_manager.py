@@ -73,6 +73,20 @@ class ParliaStateManager:
         else:
             return "Incomplet", "neutral"
 
+    def cleanup_invalid_components(self):
+        """
+        Supprime de la liste tous les composants Qt déjà détruits.
+        """
+        from PySide6.QtWidgets import QWidget
+
+        self._ui_components = [
+            c
+            for c in self._ui_components
+            if isinstance(c, QWidget)
+            and c is not None
+            and not c.__dict__.get("__deleted__", False)
+        ]
+
     # === Logique de validation ===
 
     def is_ready_to_record(self) -> bool:
@@ -96,6 +110,7 @@ class ParliaStateManager:
             self._ui_components.remove(panel)
 
     def _refresh_ui_state(self):
+        self.cleanup_invalid_components()
         for component in self._ui_components[:]:
             try:
                 component.apply_ui_state()

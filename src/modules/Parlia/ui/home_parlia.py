@@ -9,6 +9,9 @@ from PySide6.QtWidgets import (
 )
 
 from modules.parlia import ModuleInfo
+from modules.parlia.services import parlia_data
+from modules.parlia.services.parlia_data import get_max_duration
+from modules.parlia.services.parlia_state_manager import parlia_state
 from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.action_panel import ActionPanel
 from modules.parlia.ui.settings_panel import SettingsPanel
@@ -103,7 +106,7 @@ class ParliaHome(QWidget):
         layout.addWidget(label)
 
         self.transcription_panel = TranscriptionPanel(self)
-        # self.action_panel = ActionPanel(transcription_panel=self.transcription_panel)
+        parlia_data.set_max_duration(int(get_max_duration()))
         layout.addWidget(self.transcription_panel)
 
         container.setLayout(layout)
@@ -122,10 +125,18 @@ class ParliaHome(QWidget):
         label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
 
-        action_panel = ActionPanel(
+        self.action_panel = ActionPanel(
             transcription_panel=self.transcription_panel, parent=self
         )
-        layout.addWidget(action_panel)
+        layout.addWidget(self.action_panel)
 
         container.setLayout(layout)
         return container
+
+    def cleanup(self):
+        if hasattr(self, "transcription_panel"):
+            parlia_state.unregister_ui_component(self.transcription_panel)
+        if hasattr(self, "action_panel"):
+            parlia_state.unregister_ui_component(self.action_panel)
+        if hasattr(self, "settings_panel"):
+            parlia_state.unregister_ui_component(self.settings_panel)

@@ -270,7 +270,11 @@ class ActionPanel(QWidget):
             button.setEnabled(not is_locked)
 
     def closeEvent(self, event):
-        parlia_state.unregister_ui_component(self)
+        self.__deleted__ = True
+        try:
+            parlia_state.unregister_ui_component(self)
+        except Exception as e:
+            print(f"[Panel] Erreur lors du désabonnement : {e}")
         super().closeEvent(event)
 
     def open_prompt_editor(self):

@@ -85,6 +85,8 @@ class MainWindow(QMainWindow):
             item = self.content_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
+                if hasattr(widget, "cleanup"):
+                    widget.cleanup()  # type: ignore[attr-defined]
                 widget.setParent(None)
                 widget.deleteLater()
 
