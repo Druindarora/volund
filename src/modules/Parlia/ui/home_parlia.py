@@ -19,6 +19,7 @@ from modules.parlia.utils import hotkeys
 class ParliaHome(QWidget):
     def __init__(self, main_window: QMainWindow):
         super().__init__(main_window)
+        print("[DEBUG] ✅ ParliaHome instancié")
         self.main_window = main_window
         self._build_ui()
         hotkeys.start_hotkey_listener(
@@ -36,7 +37,6 @@ class ParliaHome(QWidget):
         separator1 = self._create_separator()
 
         # On crée d'abord le bloc de transcription (nécessaire pour créer Settings ensuite)
-        self.transcription_panel = TranscriptionPanel(self)
         transcription_block = self._create_transcription_block()
 
         # Ensuite on peut créer SettingsPanel en lui passant le callback correct
@@ -103,7 +103,7 @@ class ParliaHome(QWidget):
         layout.addWidget(label)
 
         self.transcription_panel = TranscriptionPanel(self)
-        self.action_panel = ActionPanel(transcription_panel=self.transcription_panel)
+        # self.action_panel = ActionPanel(transcription_panel=self.transcription_panel)
         layout.addWidget(self.transcription_panel)
 
         container.setLayout(layout)
