@@ -28,6 +28,7 @@ from modules.parlia.services.parlia_data import (
     set_model_name,
 )
 from modules.parlia.settings import ParliaSettings
+from modules.parlia.utils.stylesheet_loader import load_qss_for
 
 
 class SettingsPanel(QWidget):
@@ -38,6 +39,7 @@ class SettingsPanel(QWidget):
         self.model_list = []
         self._load_user_preferences()
         self._build_ui()
+        load_qss_for(self)
 
     def _load_user_preferences(self):
         """
@@ -73,45 +75,55 @@ class SettingsPanel(QWidget):
 
     def _add_model_section(self):
         """
-        Réorganise la section modèle : bouton + chemin, puis label + combo.
+        Section du modèle : bouton + chemin, puis combo + label en ligne.
         """
         # Ligne : bouton + chemin
         folder_line_layout = QHBoxLayout()
 
-        # Bouton pour sélectionner le dossier
         self.select_folder_button = QPushButton(ParliaSettings.LABEL_CHOOSE_FOLDER)
+        self.select_folder_button.setObjectName("SelectFolderButton")
         self.select_folder_button.clicked.connect(self._select_model_folder)
         folder_line_layout.addWidget(self.select_folder_button)
 
-        # Label pour afficher le chemin du dossier
         self.path_label = QLabel()
+        self.path_label.setObjectName("PathLabel")
         self.path_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self._update_path_label()
         folder_line_layout.addWidget(self.path_label)
 
         self.main_layout.addLayout(folder_line_layout)
 
-        # Espacement vertical léger
         self.main_layout.addSpacing(10)
 
-        # Label pour le modèle sélectionné
-        self.current_model_label = QLabel()
-        self._update_model_label()
-        self.main_layout.addWidget(self.current_model_label)
+        # ✅ Ligne combo + label
+        model_line_layout = QHBoxLayout()
 
-        # Combo box pour la liste des modèles
-        self.model_combobox = QComboBox(self)  # ✅ Parent explicite
-        self.model_combobox.setWindowFlags(
-            Qt.WindowType.Widget
-        )  # ✅ Corrigé : Qt.Widget → Qt.WindowType.Widget
+        # Label "Modèle sélectionné :"
+        label = QLabel("Modèle sélectionné :")
+        label.setObjectName("ModelLabel")
+        label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        label.setFixedWidth(150)  # 🔧 Largeur fixe raisonnable pour bien l’aligner
+
+        # ComboBox juste à côté
+        self.model_combobox = QComboBox(self)
+        self.model_combobox.setObjectName("ModelComboBox")
+        self.model_combobox.setWindowFlags(Qt.WindowType.Widget)
         self.model_combobox.setVisible(False)
         self.model_combobox.currentTextChanged.connect(self._on_model_selected)
+        self.model_combobox.setFixedWidth(220)  # 🔧 Largeur fixe élégante
 
+        # Ajout dans layout horizontal
+        model_line_layout.addWidget(label)
+        model_line_layout.addSpacing(10)  # 🔧 Petit écart visuel
+        model_line_layout.addWidget(self.model_combobox)
+        model_line_layout.addStretch()  # ✅ Repousse le reste à droite
+
+        self.main_layout.addLayout(model_line_layout)
+
+        # ✅ Chargement des modèles si dossier déjà connu
         if self.current_folder and os.path.isdir(self.current_folder):
             self._update_model_list()
             self._set_initial_model_selection()
-
-        self.main_layout.addWidget(self.model_combobox)
 
     def _update_path_label(self):
         """Met à jour le texte du label du chemin du dossier."""
@@ -121,17 +133,6 @@ class SettingsPanel(QWidget):
             )
         else:
             self.path_label.setText("")
-
-    def _update_model_label(self):
-        """Met à jour le texte du label du modèle sélectionné."""
-        if self.selected_model_name:
-            self.current_model_label.setText(
-                ParliaSettings.LABEL_CURRENT_MODEL.format(
-                    model_name=self.selected_model_name
-                )
-            )
-        else:
-            self.current_model_label.setText(ParliaSettings.LABEL_CURRENT_MODEL)
 
     def _set_initial_model_selection(self):
         """Configure la sélection initiale dans la combo box des modèles."""
@@ -153,7 +154,7 @@ class SettingsPanel(QWidget):
 
     def _add_conclusion_phrase_section(self):
         """
-        Ajoute une section simple mais claire pour gérer la phrase de conclusion.
+        Ajoute une section claire et structurée pour gérer la phrase de conclusion.
         """
         conclusion_layout = QVBoxLayout()
 
@@ -174,32 +175,35 @@ class SettingsPanel(QWidget):
         self.include_conclusion_checkbox.blockSignals(False)
         conclusion_layout.addWidget(self.include_conclusion_checkbox)
 
-        # 2. Label : phrase actuelle
-        current_label = QLabel("Phrase actuelle :")
-        current_label.setStyleSheet("font-weight: bold;")
-        conclusion_layout.addWidget(current_label)
-
+        # 2. Ligne : Phrase actuelle (label + champ readonly)
+        current_phrase_layout = QHBoxLayout()
+        self.current_label = QLabel("Phrase actuelle :")  # 🔧 deviens attribut
+        self.current_label.setStyleSheet("font-weight: bold;")
         self.current_phrase_display = QLineEdit()
         self.current_phrase_display.setReadOnly(True)
         self.current_phrase_display.setStyleSheet("color: gray;")
-        conclusion_layout.addWidget(self.current_phrase_display)
+        current_phrase_layout.addWidget(self.current_label)
+        current_phrase_layout.addWidget(self.current_phrase_display)
+        conclusion_layout.addLayout(current_phrase_layout)
 
-        # 3. Label : nouvelle phrase
-        custom_label = QLabel("Nouvelle phrase :")
-        custom_label.setStyleSheet("font-weight: bold;")
-        conclusion_layout.addWidget(custom_label)
-
+        # 3. Ligne : Nouvelle phrase (label + champ modifiable)
+        new_phrase_layout = QHBoxLayout()
+        self.new_phrase_label = QLabel("Nouvelle phrase :")  # 🔧 deviens attribut
+        self.new_phrase_label.setStyleSheet("font-weight: bold;")
         self.custom_phrase_input = QLineEdit()
         self.custom_phrase_input.setPlaceholderText(
             ParliaSettings.LABEL_PLACEHOLDER_CUSTOM_PHRASE
         )
-        conclusion_layout.addWidget(self.custom_phrase_input)
+        new_phrase_layout.addWidget(self.new_phrase_label)
+        new_phrase_layout.addWidget(self.custom_phrase_input)
+        conclusion_layout.addLayout(new_phrase_layout)
 
         # 4. Bouton d’enregistrement
         self.new_phrase_button = QPushButton("💾 Enregistrer la phrase")
         self.new_phrase_button.clicked.connect(self._on_new_phrase_clicked)
         conclusion_layout.addWidget(self.new_phrase_button)
 
+        # Intégrer dans le layout principal
         self.main_layout.addLayout(conclusion_layout)
 
         # Appliquer l’état initial
@@ -221,6 +225,10 @@ class SettingsPanel(QWidget):
         self.current_phrase_display.setEnabled(is_checked)
         self.new_phrase_button.setEnabled(is_checked)
         self.custom_phrase_input.setEnabled(is_checked)
+
+        # ✅ On désactive ou réactive les labels également
+        self.current_label.setEnabled(is_checked)
+        self.new_phrase_label.setEnabled(is_checked)
 
         if is_checked:
             conclusion_text = get_conclusion_text()
@@ -327,7 +335,6 @@ class SettingsPanel(QWidget):
             unload_model()
             no_model_name = ParliaSettings.LABEL_NO_MODEL_SELECTED
             set_model_name(no_model_name)
-            self.current_model_label.setText(no_model_name)
 
             if self.update_record_callback:
                 self.update_record_callback()
@@ -338,9 +345,6 @@ class SettingsPanel(QWidget):
             print(f"Modèle sélectionné _on_model_selected : {model_name}")
             set_model_name(model_name)
             load_model(model_name)
-            self.current_model_label.setText(
-                ParliaSettings.LABEL_CURRENT_MODEL.format(model_name=model_name)
-            )
 
             if self.update_record_callback:
                 self.update_record_callback()
@@ -356,3 +360,10 @@ class SettingsPanel(QWidget):
         set_conclusion_text(custom_phrase)
 
         print(f"Phrase de conclusion sauvegardée : {custom_phrase}")
+
+    def apply_ui_state(self):
+        """
+        Méthode obligatoire pour que ParliaStateManager puisse rafraîchir l'état des composants enregistrés.
+        Ici, on ne fait rien car SettingsPanel n'a pas de logique d'état dynamique.
+        """
+        pass

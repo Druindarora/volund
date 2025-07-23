@@ -20,15 +20,17 @@ PROMPT_DEFINITIONS = {
 }
 
 
-def get_max_duration() -> str:
+def get_max_duration() -> int:
     value = user_data.get(MODULE_NAME, KEY_MAX_DURATION)
     if isinstance(value, str) and value.isdigit():
+        return int(value)
+    if isinstance(value, int):
         return value
-    return "0"
+    return 0
 
 
-def set_max_duration(seconds: int):
-    user_data.set(MODULE_NAME, KEY_MAX_DURATION, seconds)
+def set_max_duration(value: int):
+    user_data.set(MODULE_NAME, KEY_MAX_DURATION, int(value))
 
 
 def get_model_name() -> str:

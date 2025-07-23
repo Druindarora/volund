@@ -168,28 +168,35 @@ class TranscriptionPanel(QWidget):
         Populate the combobox with predefined duration options.
         """
         self.duration_options = {
-            "0": ParliaSettings.LABEL_NO_DURATION,
-            "1": ParliaSettings.LABEL_DURATION_1_MIN,
-            "2": ParliaSettings.LABEL_DURATION_2_MIN,
-            "5": ParliaSettings.LABEL_DURATION_5_MIN,
-            "10": ParliaSettings.LABEL_DURATION_10_MIN,
-            "15": ParliaSettings.LABEL_DURATION_15_MIN,
+            0: ParliaSettings.LABEL_NO_DURATION,
+            1: ParliaSettings.LABEL_DURATION_1_MIN,
+            2: ParliaSettings.LABEL_DURATION_2_MIN,
+            5: ParliaSettings.LABEL_DURATION_5_MIN,
+            10: ParliaSettings.LABEL_DURATION_10_MIN,
+            15: ParliaSettings.LABEL_DURATION_15_MIN,
         }
 
         for key, value in self.duration_options.items():
-            self.max_duration_combobox.addItem(value, key)
+            self.max_duration_combobox.addItem(value, int(key))
 
     def _load_saved_duration(self):
         saved_duration_key = get_max_duration()
         print(f"Loaded saved duration key: {saved_duration_key}")
 
-        # DÉFÉRER le set_max_duration si les widgets ne sont pas encore prêts
-        if saved_duration_key and saved_duration_key in self.duration_options:
-            index = self.max_duration_combobox.findData(saved_duration_key)
+        if (
+            saved_duration_key is not None
+            and int(saved_duration_key) in self.duration_options
+        ):
+            index = self.max_duration_combobox.findData(int(saved_duration_key))
+
             if index != -1:
                 self.max_duration_combobox.setCurrentIndex(index)
         else:
             self.max_duration_combobox.setCurrentIndex(0)
+
+        # ✅ Ajout essentiel : forcer la mise à jour de l’état global
+        current_key = self.max_duration_combobox.currentData()
+        parlia_state.set_max_duration(current_key)
 
     def save_max_duration(self):
         """
@@ -197,8 +204,7 @@ class TranscriptionPanel(QWidget):
         """
         selected_key = self.max_duration_combobox.currentData()
         set_max_duration(selected_key)
-        if selected_key.isdigit():
-            parlia_state.set_max_duration(int(selected_key))
+        parlia_state.set_max_duration(selected_key)
 
     def create_recording_time_section(self):
         """
