@@ -67,9 +67,6 @@ class SettingsPanel(QWidget):
         # Ajouter la section du modèle
         self._add_model_section()
 
-        # Ajouter la section du chemin du dossier
-        # self._add_folder_path_section()
-
         # Ajouter la section de la phrase de conclusion
         self._add_conclusion_phrase_section()
 
@@ -139,18 +136,6 @@ class SettingsPanel(QWidget):
         if self.selected_model_name in self.model_list:
             self.model_combobox.setCurrentText(self.selected_model_name)
             self.model_combobox.setVisible(True)
-
-    def _add_folder_path_section(self):
-        """
-        Ajouter la section pour afficher le chemin du dossier sélectionné.
-        """
-        self.path_label = QLabel("")
-        self.path_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        if self.current_folder:
-            self.path_label.setText(
-                ParliaSettings.LABEL_CHOOSE_FOLDER.format(folder=self.current_folder)
-            )
-        self.main_layout.addWidget(self.path_label)
 
     def _add_conclusion_phrase_section(self):
         """

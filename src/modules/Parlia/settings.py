@@ -34,7 +34,9 @@ class ParliaSettings:
     # Settings Panel Labels
     LABEL_CURRENT_MODEL: str = "Modèle en cours : Aucun"
     LABEL_CHOOSE_FOLDER: str = "Choisir dossier"
-    LABEL_INCLUDE_CONCLUSION: str = "Inclure automatiquement la phrase de conclusion"
+    LABEL_INCLUDE_CONCLUSION: str = (
+        "Inclure automatiquement la phrase de conclusion (non codé)"
+    )
     LABEL_CURRENT_CONCLUSION_PHRASES: str = "Phrases de conclusion actuelles :"
     LABEL_NO_CURRENT_CONCLUSION: str = "Aucun"
     LABEL_NEW_PHRASE: str = "Nouvelle phrase"
