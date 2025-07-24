@@ -1,10 +1,9 @@
 # main_window.py
 
+import importlib
 import io
 import os
 import sys
-
-from modules.parlia.ui.home_parlia import ParliaHome
 
 if sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -97,20 +96,32 @@ class MainWindow(QMainWindow):
 
     def _load_module(self, module_name: str):
         """
-        Charge le module correspondant au nom donné.
-        Ajoutez de nouveaux modules ici en les associant à leur fonction de chargement.
+        Charge dynamiquement le module demandé, en appelant sa fonction `launch(parent)` si disponible.
         """
-        module_switch = {
-            "parlia": lambda: self.content_layout.addWidget(ParliaHome(self)),
-            "home": self._create_home,
-        }
+        if module_name == "home":
+            self._create_home()
+            return
 
-        # Exécuter la fonction associée ou afficher un message d'erreur
-        load_function = module_switch.get(module_name)
-        if load_function:
-            load_function()
-        else:
-            print(f"Module inconnu : {module_name}")
+        try:
+            # Import dynamique du module Python depuis src.modules
+            full_module_path = f"modules.{module_name}"
+            mod = importlib.import_module(full_module_path)
+
+            # Vérifie la présence de la fonction launch(parent)
+            if hasattr(mod, "launch"):
+                widget = mod.launch(parent=self)
+                if widget is not None:
+                    self.content_layout.addWidget(widget)
+                    return
+
+            print(
+                f"⚠️ Le module '{module_name}' ne contient pas de fonction launch valide."
+            )
+
+        except ModuleNotFoundError:
+            print(f"❌ Module introuvable : {module_name}")
+        except Exception as e:
+            print(f"❌ Erreur lors du chargement du module '{module_name}' : {e}")
 
     def closeEvent(self, event):
         self._save_window_state()

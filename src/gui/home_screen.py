@@ -147,11 +147,10 @@ class HomeScreen(QWidget):
         layout.addWidget(desc_label, alignment=Qt.AlignmentFlag.AlignHCenter)
 
     def _connect_signals(self, card, module):
-        """Connecte les signaux spécifiques pour un module."""
-        if module.name.lower() == "parlia":
-            card.clicked.connect(
-                lambda: self.main_window.handle_sidebar_click("parlia")
-            )
+        # Connecte dynamiquement TOUS les modules à handle_sidebar_click
+        card.clicked.connect(
+            lambda name=module.name.lower(): self.main_window.handle_sidebar_click(name)
+        )
 
     def build_star_widget(self, module_name: str, default_fav: bool) -> QWidget:
         button = QPushButton()
