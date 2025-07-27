@@ -1,3 +1,10 @@
+# === FICHIER : action_settings_dialog.py (ex-prompt_editor_dialog.py) ===
+# 🔍 Audit final d'un dialog simple destiné à éditer les prompts personnalisés
+# --------------------------------------------------
+# ✅ Propre, lisible, efficace
+# 🟡 Va évoluer pour intégrer d'autres réglages liés aux actions personnalisées
+# --------------------------------------------------
+
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -14,10 +21,10 @@ from modules.parlia.services.parlia_data import (
 )
 
 
-class PromptEditorDialog(QDialog):
+class ActionSettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Modifier les prompts personnalisés")
+        self.setWindowTitle("Paramètres des actions personnalisées")
         self.setModal(True)
         self.inputs = {}  # key -> QPlainTextEdit
 

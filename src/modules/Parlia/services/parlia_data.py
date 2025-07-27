@@ -1,4 +1,22 @@
-# modules/parlia/services/parlia_data.py
+# === FICHIER : parlia_data.py ===
+# 🔍 Audit et consolidation des données persistantes Parlia
+# --------------------------------------------------
+# ✅ Ce fichier agit comme interface entre le module Parlia et `user_data_manager`
+# 📁 Sa place est légitime dans `services/` pour l’instant
+# 🔧 Il regroupe :
+#   - des préférences utilisateur (durée, modèle Whisper, prompts...)
+#   - des flags simples (conclusion activée, etc.)
+#   - des labels associés aux prompts
+# --------------------------------------------------
+
+# ✅ Pas de refactor nécessaire à ce stade
+# 🔄 Plus tard : possibilité de splitter en :
+#     - user_preferences.py (durée, modèle, dossier...)
+#     - prompt_config.py (tous les prompts + labels)
+#     - settings_schema.json (future validation ?)
+
+# 🚩 À surveiller si le fichier devient trop long ou contient trop de types de données différentes
+
 
 from core.user_data_manager import user_data
 

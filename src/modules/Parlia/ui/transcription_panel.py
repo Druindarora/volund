@@ -1,3 +1,31 @@
+# === FICHIER : transcription_panel.py ===
+# 🔍 Audit du panneau principal de transcription vocale
+# --------------------------------------------------
+# ✅ Rôle : gérer l’enregistrement audio, afficher les temps, montrer la transcription, formatter le texte
+# 📁 Composant principal de l’UI active de Parlia
+# --------------------------------------------------
+
+# ✅ Points positifs :
+# - Bon découpage logique (gauche = contrôles, droite = texte)
+# - `toggle_recording()` bien structuré, proprement découplé
+# - Utilise `parlia_state` et `whisper_service` de manière correcte
+# - `apply_ui_state()` bien en place pour rafraîchir les états
+# - Méthodes `update_xxx_timer()` efficaces et cohérentes
+# - Barre de formatage bien encapsulée (bold, italic, emoji)
+
+# 🔄 Suggestions (refactor possible à moyen terme) :
+# 1. 🔁 Extraire la barre de formatage en `TranscriptionFormattingToolbar(QWidget)`
+# 2. 🔁 Extraire le bloc gauche (`create_left_side`) en `TranscriptionControlsPanel`
+# 3. 🔁 Intégrer un `TranscriptionTextWidget` avec outils + QTextEdit
+# 4. 🧪 Optionnel : ajouter un bouton pour copier le texte transcrit
+# 5. ✅ Ajouter logs via logger pour `toggle_recording`, etc.
+
+# 🟡 Code lisible mais long (~350 lignes)
+# Un refactor léger en composants réutilisables allègera les panels et favorisera les tests.
+
+# ✅ Tu peux t’appuyer dessus tel quel pour le moment. Il est fonctionnel et prêt à évoluer en douceur.
+
+
 from typing import Optional
 
 from PySide6.QtCore import Qt, Slot

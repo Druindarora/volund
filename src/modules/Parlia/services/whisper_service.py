@@ -1,3 +1,18 @@
+# === FICHIER : whisper_service.py ===
+# 🔍 Audit et stabilisation du service de transcription avec Whisper
+# --------------------------------------------------
+# ✅ Le service est globalement bien structuré et modulaire.
+# 🔄 Quelques fonctions peuvent être simplifiées, ou isolées pour clarté.
+# 🟡 La lenteur au chargement n’est pas liée à ce fichier mais au `load_model()` (manager)
+# --------------------------------------------------
+# ✅ Propositions :
+# - Extraire `_AsyncTranscriber` dans un `workers/transcriber_worker.py`
+# - Isoler le `Loader` de `load_model_async()` dans un `workers/model_loader_worker.py`
+# - Ajout futur d’un logger structuré à la place des `print()`
+# - Ajouter une méthode de "ping" modèle pour test plus rapide
+# --------------------------------------------------
+
+
 import os
 import time
 from typing import Callable, Optional

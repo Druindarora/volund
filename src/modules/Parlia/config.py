@@ -1,4 +1,21 @@
-# modules/parlia/config.py
+# === FICHIER : config.py (modules/parlia/) ===
+# 🔍 Audit du fichier de configuration central de Parlia
+# --------------------------------------------------
+# ✅ Rôle : stocker les constantes (hotkey, délais, messages) de manière structurée
+# --------------------------------------------------
+
+# ✅ Points positifs :
+# - Organisation propre avec classes imbriquées (`Timeouts`, `ParliaConfig`)
+# - Accès typé et structuré : `config.timeouts.paste_delay`, etc.
+# - Instance globale unique (`config`) bien nommée
+
+# 🛠 Recommandations d’évolution :
+# 1. 📦 Déplacer ce fichier dans `modules/parlia/core/` ou `config/` si tu veux une vraie centralisation future
+# 2. 🔁 Ajouter une méthode `as_dict()` (utile pour tests / UI avancées / export)
+# 3. 🔄 Ajouter d’autres groupes : `CursorConfig`, `CodellamaConfig`, `LoggerConfig`, etc.
+# 4. 🧪 Prévoir un jour un chargement dynamique depuis un fichier (ex : `config.yaml`)
+
+# ✅ À garder absolument pour la suite, avec évolution vers un vrai "hub de settings constants"
 
 
 class Timeouts:

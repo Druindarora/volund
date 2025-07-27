@@ -1,3 +1,11 @@
+# === FICHIER : run_countdown.py ===
+# 🔄 Ce code était précédemment dans `services/utils.py` mais ne devrait pas s'y trouver.
+# ✅ Proposition : le placer dans `utils/timing.py` ou `utils/helpers.py`
+# --------------------------------------------------
+# Rôle : afficher un décompte avec un callback facultatif pour mise à jour UI/console
+# Utilisé principalement dans l’envoi différé vers ChatRelay
+# --------------------------------------------------
+
 import time
 
 

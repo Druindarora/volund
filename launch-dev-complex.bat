@@ -73,38 +73,24 @@ if %errorlevel% neq 0 (
     echo ✅ [WSL] Modèle préchargé. >> %LOGFILE%
 )
 
-:: Lancement de VS Code
+:: === [WIN] LANCEMENT VS CODE CLASSIQUE (PAS CURSOR) ===
 echo [WIN] Lancement de VS Code...
-:: Sauvegarde du répertoire courant dans une variable protégée
+
+:: Sauvegarde du répertoire courant
 set "PROJECT_DIR=%cd%"
 
-:: Vérifie que la commande 'code' est disponible
-where code > nul 2>&1
-set CODE_AVAILABLE=%errorlevel%
+:: Emplacement typique de VS Code (hors Cursor)
+set "VSCODE_PATH=C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe"
 
-echo CODE_AVAILABLE=%CODE_AVAILABLE%
-
-if not defined CODE_AVAILABLE (
-    echo ❌ Variable CODE_AVAILABLE non définie ! >> %LOGFILE%
-    echo ❌ Erreur inattendue : CODE_AVAILABLE est vide.
-    goto FIN
+if exist "%VSCODE_PATH%" (
+    echo ✅ [WIN] VS Code trouvé à %VSCODE_PATH%. >> %LOGFILE%
+    start "" "%VSCODE_PATH%" "%PROJECT_DIR%"
+    echo ✅ [WIN] VS Code lancé. >> %LOGFILE%
+) else (
+    echo ❌ [ERREUR] VS Code non trouvé à l’emplacement attendu. >> %LOGFILE%
+    echo ❌ [INFO] Tu peux corriger le chemin dans le script si besoin.
 )
 
-if "%CODE_AVAILABLE%"=="0" goto CODE_OK
-goto CODE_NOT_FOUND
-
-:CODE_OK
-echo ✅ VS Code est disponible.
-call code "%PROJECT_DIR%" >> %LOGFILE% 2>&1
-set CODE_LAUNCH_STATUS=%errorlevel%
-goto CODE_DONE
-
-:CODE_NOT_FOUND
-echo ❌ [ERREUR] VS Code introuvable. >> %LOGFILE%
-echo ❌ La commande 'code' n’est pas dans le PATH.
-goto CODE_DONE
-
-:CODE_DONE
 
 :: Lancement du script Python
 if exist .venv\Scripts\python.exe (

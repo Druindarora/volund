@@ -1,3 +1,26 @@
+# === FICHIER : action_panel.py ===
+# 🔍 Audit du panneau des actions IA (post-transcription)
+# --------------------------------------------------
+# ✅ Rôle : déclenche des actions (copie, envoi IA, édition, refacto...)
+# 📁 Panneau principal de déclenchement après la transcription
+# --------------------------------------------------
+
+# ✅ Points forts :
+# - Appels bien séparés (chaque bouton = 1 méthode dédiée)
+# - Gestion du status via `show_status_message()` efficace
+# - Intégration avec `transcription_panel`, `vsCodeService`, `chatgptService` propre
+
+# 🛠 Améliorations nécessaires (structure) :
+# 1. 🔁 Supprimer `create_row_one/two/three()` → remplacer par logique d’onglets (QTabWidget ou QPushButton tab-switch)
+# 2. 🔄 Migrer les boutons dans des sous-groupes : `ChatButtons`, `VSCodeButtons`, `CodeAnalysisButtons`, etc.
+# 3. ✅ Ajouter gestion dynamique des boutons actifs selon contexte (transcription vide → certains boutons désactivés)
+# 4. ✅ Regrouper les `objectName` cohérents pour styling/analytics futur
+# 5. 🚧 `generate_tests_button` est inactif → prévoir branchement + logique (à venir ?)
+
+# 📦 Taille actuelle correcte, mais complexité visuelle → à modulariser
+# Un split en sous-widgets thématiques améliorerait la lisibilité et la maintenabilité.
+
+
 import qtawesome as qta
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -25,7 +48,7 @@ from modules.parlia.services.vsCodeService import (
     focus_vscode_qt,
 )
 from modules.parlia.settings import ParliaSettings
-from modules.parlia.ui.dialogs.prompt_editor_dialog import PromptEditorDialog
+from modules.parlia.ui.dialogs.action_settings_dialog import ActionSettingsDialog
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 
@@ -278,5 +301,5 @@ class ActionPanel(QWidget):
         super().closeEvent(event)
 
     def open_prompt_editor(self):
-        dialog = PromptEditorDialog(self)
+        dialog = ActionSettingsDialog(self)
         dialog.exec_()

@@ -1,4 +1,9 @@
-# modules/parlia/services/parlia_state_manager.py
+# === FICHIER : parlia_state_manager.py ===
+# 🔍 Audit du gestionnaire d'état global Parlia (stateless côté UI)
+# --------------------------------------------------
+# ✅ Structure claire et rôle bien défini : stocker l'état runtime lié à Parlia
+# 📍 Reste bien dans `services/` (partagé, pas pure UI, pas core logic)
+# --------------------------------------------------
 
 
 from config.env import is_dev

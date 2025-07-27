@@ -1,3 +1,24 @@
+# === FICHIER : settings.py (racine module parlia) ===
+# 🔍 Audit du fichier de constantes de texte (libellés UI)
+# --------------------------------------------------
+# ✅ Rôle : centralise les libellés visibles dans l’interface utilisateur de Parlia
+# --------------------------------------------------
+
+# ✅ Points positifs :
+# - Organisation claire par sections (Transcription, Action, Settings, Home)
+# - Facilite les futures traductions ou modifications globales
+# - Utilisation en mode `ParliaSettings.LABEL_XXX` = lisible et robuste
+
+# 🛠 Suggestions d’amélioration :
+# 1. 🔁 Renommer en `parlia_strings.py` ou déplacer dans `i18n/` pour plus de clarté
+# 2. 🔁 Ajouter un dictionnaire miroir : `LABELS = { "RECORD": "Enregistrer", ... }` pour usage dynamique
+# 3. 🔄 Regrouper par objets imbriqués : `LABELS.TRANSCRIPTION.RECORD`, `LABELS.ACTION.COPY_TEXT`, etc.
+# 4. 📦 Charger depuis un fichier JSON/YAML si passage à la localisation multi-langues
+
+# ✅ Conclusion :
+# Garde-le tel quel pour l’instant, mais il est un bon candidat à évoluer vers une **infrastructure i18n** plus formelle
+
+
 class ParliaSettings:
     # Transcription Panel Labels
     LABEL_RECORD: str = "Enregistrer"

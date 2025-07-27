@@ -1,3 +1,25 @@
+# === FICHIER : home_parlia.py ===
+# 🔍 Audit du panneau d'accueil principal de Parlia
+# --------------------------------------------------
+# ✅ Rôle : point d'entrée UI, agencement des blocs principaux
+# 📁 Composant central, bien localisé dans `ui/`
+# --------------------------------------------------
+
+# ✅ Points forts :
+# - Structure propre, claire, logique verticale de l'UI
+# - Instanciation des blocs dans des méthodes dédiées (_create_xxx)
+# - Appels à `hotkeys.start_hotkey_listener()` et `parlia_data` bien encapsulés
+# - Gestion du `parlia_state` à la fin avec `cleanup()`
+
+# 🔄 Idées d'amélioration mineures :
+# - Regrouper visuellement `settings` et `transcription` côte à côte si UI le permet
+# - Ajouter une méthode `apply_ui_state()` ici si ce composant devient réactif à l'état (optionnel)
+# - Séparer le `TrackerWidgetPanel` dans un layout plus logique si UI évolue vers une sidebar gauche
+
+# 🟢 Verdict : rien à refactorer pour l’instant. Ce fichier sert uniquement de coordinateur UI.
+# Tu peux t’appuyer dessus tel quel pour construire la suite (FilePanel, etc.).
+
+
 from typing import Optional
 
 from PySide6.QtCore import Qt

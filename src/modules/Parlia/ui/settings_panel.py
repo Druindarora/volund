@@ -1,3 +1,27 @@
+# === FICHIER : settings_panel.py ===
+# 🔍 Audit du panneau de configuration principal de Parlia
+# --------------------------------------------------
+# ✅ Rôle : choisir le dossier de modèles, le modèle actif, et gérer la phrase de conclusion
+# 📁 Composant logique dans `ui/` (lié à la persistance utilisateur)
+# --------------------------------------------------
+
+# ✅ Points positifs :
+# - Interface claire et modulaire (sections bien séparées)
+# - Rétention des choix utilisateur cohérente (dossier + modèle + conclusion)
+# - Intégration avec `parlia_data` et `whisper_service` propre
+
+# 🔄 Propositions d’amélioration :
+# 1. 🔁 Extraire la **phrase de conclusion** dans un `transcription_dialog.py` (comme discuté)
+# 2. 🔁 Extraire `model_selection` dans un widget réutilisable : `ModelSelectorWidget`
+#    (utile si d’autres IA sont ajoutées : IA de code, IA secondaire, etc.)
+# 3. ✅ Lister les fichiers modèles de manière asynchrone si ça devient lent
+# 4. 🧹 Supprimer `set_conclusion_text(...)` (doublon inutile de `self._save_custom_phrase()`)
+
+# 🟡 Code un peu long (>300 lignes), mais chaque bloc est bien isolé.
+# Lorsque `dialog_transcription.py` sera en place, tu pourras couper facilement ~100 lignes.
+
+# ✅ À conserver tel quel pour l’instant. Il sert bien son rôle jusqu’à la prochaine refonte UI.
+
 import os
 
 from PySide6.QtCore import Qt

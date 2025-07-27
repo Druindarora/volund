@@ -1,3 +1,13 @@
+# === FICHIER : chatgpt_service.py ===
+# 🔍 Audit et restructuration du service ChatGPT
+# --------------------------------------------------
+# ✅ Fichier valide dans services/ (gère logique externe)
+# ❗ Contient 3 blocs de logique distincts qu’on peut clarifier :
+#    1. Envoi via ChatRelay (fenêtre externe) → à conserver ici
+#    2. Tracker integration → à isoler plus tard dans un hook/service
+#    3. UI (ajout fichiers dans QTextEdit) → à migrer vers un `ui/tools/chatrelay_helpers.py`
+# --------------------------------------------------
+
 import threading
 import time
 
@@ -10,17 +20,14 @@ from modules.parlia.config import config
 from modules.parlia.services.utils import run_countdown
 from modules.trakia.services.tracker_service import log_message
 
-# Fenêtre cible pour ChatGPT (ChatRelay)
 CHATGPT_WINDOW_PREFIX = "[ChatRelay]"
 
 
 def looking_for_window(window_prefix: str) -> str | None:
-    """Cherche une fenêtre dont le titre contient un préfixe donné."""
     return next((title for title in gw.getAllTitles() if window_prefix in title), None)
 
 
 def activate_window(title: str) -> bool:
-    """Active une fenêtre donnée si elle existe."""
     try:
         gw.getWindowsWithTitle(title)[0].activate()
         return True
@@ -29,11 +36,6 @@ def activate_window(title: str) -> bool:
 
 
 def send_text_to_chatgpt(text: str, status_callback=None):
-    """
-    Lance un compte à rebours avant d'envoyer le texte à ChatGPT,
-    puis enregistre le message via le tracker Trakia.
-    """
-
     def countdown_callback(msg):
         if status_callback:
             status_callback(msg, True)
@@ -87,8 +89,8 @@ def send_text_to_chatgpt(text: str, status_callback=None):
         return None
 
 
+# 🔄 À déplacer dans `ui/helpers/chatrelay_filetools.py`
 def format_files_for_chatgpt(file_paths: list[str]) -> str:
-    """Formate une liste de fichiers pour les inclure dans une consigne ChatGPT."""
     blocks = []
     for path in file_paths:
         try:
@@ -100,8 +102,8 @@ def format_files_for_chatgpt(file_paths: list[str]) -> str:
     return "\n\n".join(blocks)
 
 
+# 🔄 À déplacer dans `ui/helpers/chatrelay_filetools.py`
 def add_files_to_text_area(text_area: QTextEdit):
-    """Ajoute les fichiers sélectionnés à la zone de texte existante."""
     current_text = text_area.toPlainText().strip()
     if not current_text:
         print(

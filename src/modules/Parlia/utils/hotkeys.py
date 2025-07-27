@@ -1,3 +1,12 @@
+"""
+| Action                                                                                | Pourquoi                                          |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 🔁 Renommer `start_hotkey_listener` → `register_hotkey_listener()`                    | Si tu ajoutes un mapping multiple                 |
+| 🔁 Centraliser le mapping dans un `hotkey_registry: dict[hotkey_str, callback]`       | Pour que d'autres actions puissent être branchées |
+| ➕ Ajouter des raccourcis : `Ctrl+Shift+T` → transcrire, `Ctrl+Shift+C` → copier, etc. | Tu as la base pour en faire un système complet    |
+
+"""
+
 from threading import Thread
 
 import keyboard

@@ -1,4 +1,23 @@
-# modules/parlia/utils/stylesheet_loader.py
+# === FICHIER : stylesheet_loader.py ===
+# 🔍 Audit du chargeur de QSS par panel
+# --------------------------------------------------
+# ✅ Rôle : charger dynamiquement une feuille de style QSS pour chaque panel (via nom du fichier appelant)
+# 📁 Composant utilitaire localisé dans `utils/`
+# --------------------------------------------------
+
+# ✅ Points positifs :
+# - Utilisation d’`inspect.stack()` intelligente pour déterminer le nom du panel
+# - Chargement depuis `assets/styles/` bien géré
+# - Gestion des erreurs silencieuse mais informative
+
+# 🛠 Suggestions (facultatives) :
+# - Prévoir un `logger.info()` à la place des `print()` (console future)
+# - Ajouter un paramètre `silent=True` si on veut désactiver les logs en production
+# - Cacher le chemin absolu pour ne pas polluer les logs dans les builds
+
+# ✅ Aucun refactor immédiat requis. Code clair, utile, isolé.
+# Peut servir de modèle pour d’autres chargeurs (icônes, SVG, templates...)
+
 
 import inspect
 import os

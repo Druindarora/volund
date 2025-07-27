@@ -1,3 +1,33 @@
+# === FICHIER : vscode_service.py ===
+# 🔍 Audit de l'ancien service VS Code utilisé pour coller des prompts
+# --------------------------------------------------
+# ⛔ Hérité d’une logique antérieure centrée sur le focus/coller dans VS Code
+# 📦 Ce fichier mélange logique d’automatisation, prompts, clipboard, threading, UI
+# --------------------------------------------------
+# 💡 Proposition :
+# - Ne pas supprimer, mais archiver dans un sous-module : `legacy/vscode_service_legacy.py`
+# - Identifier les méthodes réutilisables (ex : clipboard / threading) à extraire
+# - Migrer progressivement vers un système CURSOR ou IA intégré
+# --------------------------------------------------
+# 🚧 Statut : Code fonctionnel mais obsolescent
+# --------------------------------------------------
+
+# DÉJÀ EN COURS : Le contenu a été déplacé dans `Run Countdown Utils`
+# Ici nous auditons et préparons l’abandon ou l’archivage.
+
+# ✅ Méthodes utiles à isoler :
+# - `focus_and_paste_in_vscode()` → à garder comme base pour CURSOR plus tard
+# - `get_active_window_title()` / `activate_window_by_title()` → génériques → `utils/window.py` ?
+# - `focus_vscode_and_refacto()` / `explain_code_to_vscode()` / `analyze_code_to_vscode()`
+#    → liés à des prompts → à rebrancher via CURSOR plus tard
+
+# 🧹 À nettoyer :
+# - Limites de thread inutiles
+# - Appels au `config.prompt` à regrouper avec une nouvelle logique IA
+
+# 🎯 Objectif : transformer ce service en couche d’abstraction CURSOR dès que possible
+
+
 import threading
 import time
 

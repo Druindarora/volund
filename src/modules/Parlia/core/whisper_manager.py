@@ -1,7 +1,22 @@
-# 🔄 Module singleton pour gérer le modèle Whisper dans Parlia
+# === FICHIER : whisper_manager.py ===
+# 🔍 Audit final du gestionnaire singleton de Whisper dans Parlia
+# --------------------------------------------------
+# ✅ Rôle : centralise le chargement, l’accès, la transcription, et l’état du modèle Whisper
+# --------------------------------------------------
 
-# Ce fichier garantit qu’un seul modèle Whisper est chargé à la fois.
-# Toutes les opérations de transcription passent par ici.
+# ✅ Points positifs :
+# - Singleton implicite via _current_model global : simple et efficace
+# - Gestion des chemins utilisateur et modèles intégrés bien faite
+# - Renvoie `parlia_state.set_whisper_ready(True/False)` = bon couplage état
+# - Toutes les fonctions sont testables isolément
+
+# 🛠 Recommandations facultatives :
+# 1. 🔁 Ajouter un logger (`logger.info`) au lieu des `print()`
+# 2. 🔄 Ajouter une fonction `ping_model()` pour tester si le modèle répond vite (ex : transcription vide ou courte)
+# 3. 🔁 Passer `get_model()` en property si accédé souvent (`model = whisper_manager.model`)
+# 4. 🧪 Ajouter un mode `simulate=True` pour tests unitaires
+
+# ✅ Aucun problème bloquant. Fichier parfaitement sain.
 
 from pathlib import Path
 from typing import Optional
