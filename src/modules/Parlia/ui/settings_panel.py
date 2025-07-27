@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
 )
 
 from modules.parlia.core.whisper_manager import (
-    load_model,
     unload_model,
 )
 from modules.parlia.services.parlia_data import (
@@ -27,6 +26,7 @@ from modules.parlia.services.parlia_data import (
     set_model_folder_path,
     set_model_name,
 )
+from modules.parlia.services.whisper_service import whisper_service
 from modules.parlia.settings import ParliaSettings
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 
@@ -329,7 +329,10 @@ class SettingsPanel(QWidget):
         if model_name:
             print(f"Modèle sélectionné _on_model_selected : {model_name}")
             set_model_name(model_name)
-            load_model(model_name)
+
+            whisper_service.load_model_async(
+                model_name, on_finished=self.update_record_callback
+            )
 
             if self.update_record_callback:
                 self.update_record_callback()

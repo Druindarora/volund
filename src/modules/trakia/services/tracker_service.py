@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List
 
 from modules.trakia.services.tracker_storage import (
+    FILENAME_MESSAGES,
     load_global_stats,
     load_messages,
     load_period_stats,
@@ -26,6 +27,7 @@ from modules.trakia.services.tracker_storage import (
     update_period_counters,
     update_weekday_stats,
 )
+from src.core.user_data_manager import user_data
 
 MESSAGE_TTL = timedelta(hours=3)
 
@@ -91,7 +93,7 @@ def cleanup_old_messages() -> None:
         for msg in messages
         if datetime.fromisoformat(msg["timestamp"]) > now - MESSAGE_TTL
     ]
-    save_message("", "")  # Reset file
+    user_data.set("tracker", FILENAME_MESSAGES, [])  # 💡 Reset propre
     for msg in valid_messages:
         save_message(msg["text"], msg["timestamp"])
 

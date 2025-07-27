@@ -85,6 +85,9 @@ def save_message(text: str, timestamp: str) -> None:
         text (str): contenu du message
         timestamp (str): timestamp ISO 8601 (ex : "2025-07-28T19:03:42")
     """
+    if not text or not timestamp:
+        return  # 💡 Ignore les messages vides
+
     messages = user_data.get("tracker", FILENAME_MESSAGES)
     if not isinstance(messages, list):
         messages = []
@@ -180,7 +183,20 @@ def update_weekday_stats(timestamp: str) -> None:
             "samedi": 0,
             "dimanche": 0,
         }
-    weekday = datetime.fromisoformat(timestamp).strftime("%A").lower()
+        weekday_map = {
+            "monday": "lundi",
+            "tuesday": "mardi",
+            "wednesday": "mercredi",
+            "thursday": "jeudi",
+            "friday": "vendredi",
+            "saturday": "samedi",
+            "sunday": "dimanche",
+        }
+        weekday_en = datetime.fromisoformat(timestamp).strftime("%A").lower()
+        weekday = weekday_map.get(weekday_en)
+        if weekday:
+            stats[current_week][weekday] += 1
+
     stats[current_week][weekday] += 1
     user_data.set("tracker", FILENAME_STATS_WEEKLY, stats)
 

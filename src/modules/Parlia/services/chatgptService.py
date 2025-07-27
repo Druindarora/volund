@@ -4,30 +4,25 @@ import time
 import pyautogui
 import pygetwindow as gw
 import pyperclip
-import requests
 from PySide6.QtWidgets import QFileDialog, QTextEdit
 
 from modules.parlia.config import config
 from modules.parlia.services.utils import run_countdown
+from modules.trakia.services.tracker_service import log_message
 
-# Constants
+# Fenêtre cible pour ChatGPT (ChatRelay)
 CHATGPT_WINDOW_PREFIX = "[ChatRelay]"
-TRACKER_WINDOW_PREFIX = "Tracker de messages ChatGPT"
-TRACKER_API_URL = "http://localhost:3001/set-message"
 
 
 def looking_for_window(window_prefix: str) -> str | None:
-    windows = gw.getAllTitles()
-    for title in windows:
-        if window_prefix in title:
-            return title
-    return None
+    """Cherche une fenêtre dont le titre contient un préfixe donné."""
+    return next((title for title in gw.getAllTitles() if window_prefix in title), None)
 
 
-def activate_window(target_title: str) -> bool:
+def activate_window(title: str) -> bool:
+    """Active une fenêtre donnée si elle existe."""
     try:
-        win = gw.getWindowsWithTitle(target_title)[0]
-        win.activate()
+        gw.getWindowsWithTitle(title)[0].activate()
         return True
     except IndexError:
         return False
@@ -35,7 +30,8 @@ def activate_window(target_title: str) -> bool:
 
 def send_text_to_chatgpt(text: str, status_callback=None):
     """
-    Lance un compte à rebours avant d'envoyer le texte à ChatGPT + au tracker.
+    Lance un compte à rebours avant d'envoyer le texte à ChatGPT,
+    puis enregistre le message via le tracker Trakia.
     """
 
     def countdown_callback(msg):
@@ -59,31 +55,18 @@ def send_text_to_chatgpt(text: str, status_callback=None):
                 status_callback("❌ Aucune fenêtre [ChatRelay] trouvée.", False)
             return False
 
-    def send_to_tracker():
-        tracker_title = looking_for_window(TRACKER_WINDOW_PREFIX)
-        if tracker_title and activate_window(tracker_title):
-            print(f"[Parlia] Tracker activé : {tracker_title}")
-            message = pyperclip.paste()
-            status_ok = send_to_tracker_via_api(message)
-
-            if status_ok:
-                time.sleep(config.timeouts.after_paste_delay)
-                pyautogui.press("enter")
-                print("[Parlia] ✅ Message transmis au tracker (avec ENTER)")
-                if status_callback:
-                    status_callback("✅ Message transmis au tracker", True)
-            else:
-                print("[Parlia] ❌ Erreur API lors de l’envoi au tracker.")
-                if status_callback:
-                    status_callback("❌ Échec de l’envoi au tracker via l’API", False)
-        else:
-            print("[Parlia] ❌ Aucune fenêtre Tracker trouvée.")
-            if status_callback:
-                status_callback("❌ Aucune fenêtre Tracker trouvée.", False)
-
     def after_countdown():
         if send_to_chatgpt():
-            send_to_tracker()
+            message = pyperclip.paste()
+            try:
+                log_message(message)
+                print("[Parlia] ✅ Message enregistré via Trakia local")
+                if status_callback:
+                    status_callback("✅ Message enregistré localement", True)
+            except Exception as e:
+                print("[Parlia] ❌ Erreur Trakia :", e)
+                if status_callback:
+                    status_callback("❌ Erreur lors de l’enregistrement", False)
 
     def countdown_then_send():
         run_countdown(
@@ -96,58 +79,34 @@ def send_text_to_chatgpt(text: str, status_callback=None):
     try:
         threading.Thread(target=countdown_then_send, daemon=True).start()
         return True
-
     except Exception as e:
         error_message = f"❌ Erreur lors de l’envoi : {e}"
+        print(f"[Parlia] {error_message}")
         if status_callback:
             status_callback(error_message, False)
-        else:
-            print(f"[Parlia] {error_message}")
         return None
 
 
-def send_to_tracker_via_api(message: str) -> bool:
-    try:
-        response = requests.post(TRACKER_API_URL, json={"message": message})
-        print("[Parlia] Tracker API → Réponse :", response.json())
-        return response.json().get("status") == "ok"
-    except Exception as e:
-        print("[Parlia] ❌ Erreur tracker API :", e)
-        return False
-
-
 def format_files_for_chatgpt(file_paths: list[str]) -> str:
-    """
-    Format a list of file contents for ChatGPT display.
-
-    Args:
-        file_paths (list[str]): List of file paths.
-
-    Returns:
-        str: Formatted string with file names and contents.
-    """
+    """Formate une liste de fichiers pour les inclure dans une consigne ChatGPT."""
     blocks = []
     for path in file_paths:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
-            block = f"=== File: {path.split('/')[-1]} ===\n{content}"
-            blocks.append(block)
+            blocks.append(f"=== File: {path.split('/')[-1]} ===\n{content}")
         except Exception as e:
             blocks.append(f"=== File: {path.split('/')[-1]} ===\n[Read error: {e}]")
     return "\n\n".join(blocks)
 
 
 def add_files_to_text_area(text_area: QTextEdit):
-    """
-    Append selected files' contents into a QTextEdit area, if there is already some user input.
-
-    Args:
-        text_area (QTextEdit): The QTextEdit widget to append to.
-    """
+    """Ajoute les fichiers sélectionnés à la zone de texte existante."""
     current_text = text_area.toPlainText().strip()
     if not current_text:
-        print("⚠️ No initial instruction found. Add one before attaching files.")
+        print(
+            "⚠️ Aucune consigne initiale. Ajoutez du texte avant d’attacher des fichiers."
+        )
         return
 
     file_dialog = QFileDialog()

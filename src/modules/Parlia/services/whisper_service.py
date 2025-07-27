@@ -4,7 +4,7 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from modules.parlia.core.whisper_manager import is_model_loaded, transcribe
+from modules.parlia.core.whisper_manager import is_model_loaded, load_model, transcribe
 from modules.parlia.services.audioService import audio_service
 from modules.parlia.services.parlia_data import (
     get_conclusion_text,
@@ -130,6 +130,36 @@ class WhisperService:
             print("[INFO] Attente de la fin du thread transcription...")
             self._thread.quit()
             self._thread.wait()
+
+    def load_model_async(self, model_name: str, on_finished: Optional[Callable] = None):
+        class Loader(QObject):
+            finished = Signal()
+            failed = Signal(str)
+
+            def run(self):
+                try:
+                    print(f"[INFO] Chargement asynchrone du modèle {model_name}")
+                    load_model(model_name)
+                    self.finished.emit()
+                except Exception as e:
+                    print(f"[ERREUR] Chargement échoué : {e}")
+                    self.failed.emit(str(e))
+
+        self._loader_thread = QThread()
+        self._loader_worker = Loader()
+        self._loader_worker.moveToThread(self._loader_thread)
+
+        self._loader_thread.started.connect(self._loader_worker.run)
+        if on_finished:
+            self._loader_worker.finished.connect(on_finished)
+
+        self._loader_worker.failed.connect(lambda err: print("[ERREUR]", err))
+
+        self._loader_worker.finished.connect(self._loader_thread.quit)
+        self._loader_worker.finished.connect(self._loader_worker.deleteLater)
+        self._loader_thread.finished.connect(self._loader_thread.deleteLater)
+
+        self._loader_thread.start()
 
 
 whisper_service = WhisperService()

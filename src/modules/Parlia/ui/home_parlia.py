@@ -1,9 +1,14 @@
+from typing import Optional
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
+    QHBoxLayout,
     QLabel,
     QMainWindow,
+    QSizePolicy,
+    QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
@@ -17,12 +22,12 @@ from modules.parlia.ui.action_panel import ActionPanel
 from modules.parlia.ui.settings_panel import SettingsPanel
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 from modules.parlia.utils import hotkeys
+from modules.trakia.ui.tracker_widget import TrackerWidgetPanel
 
 
 class ParliaHome(QWidget):
-    def __init__(self, main_window: QMainWindow):
-        super().__init__(main_window)
-        print("[DEBUG] ✅ ParliaHome instancié")
+    def __init__(self, main_window: Optional[QMainWindow] = None):
+        super().__init__()
         self.main_window = main_window
         self._build_ui()
         hotkeys.start_hotkey_listener(
@@ -35,22 +40,15 @@ class ParliaHome(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
 
-        # Création préalable des blocs dans le bon ordre logique
-        title = self._create_title()
+        header_row = self._create_title_and_tracker_row()
         separator1 = self._create_separator()
-
-        # On crée d'abord le bloc de transcription (nécessaire pour créer Settings ensuite)
         transcription_block = self._create_transcription_block()
-
-        # Ensuite on peut créer SettingsPanel en lui passant le callback correct
         settings_block = self._create_settings_block()
-
         separator2 = self._create_separator()
         separator3 = self._create_separator()
         action_block = self._create_action_block()
 
-        # On ajoute tout dans le bon ordre dans le layout
-        layout.addWidget(title)
+        layout.addWidget(header_row)
         layout.addWidget(separator1)
         layout.addWidget(settings_block)
         layout.addWidget(separator2)
@@ -61,12 +59,35 @@ class ParliaHome(QWidget):
 
         self.setLayout(layout)
 
-    def _create_title(self) -> QLabel:
-        title = QLabel(f"Bienvenue dans {ModuleInfo.name}")
-        title.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
-        title.setFont(QFont("Arial", 28, QFont.Weight.Bold))
-        title.setContentsMargins(0, 0, 0, 20)
-        return title
+    def _create_title_and_tracker_row(self) -> QWidget:
+        """
+        Crée une ligne avec le titre centré et le widget Tracker à droite.
+        """
+        container = QWidget()
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 20)
+
+        # Spacer gauche
+        layout.addItem(
+            QSpacerItem(40, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        )
+
+        # Titre centré
+        self.title = QLabel(f"{ModuleInfo.name}")
+        self.title.setFont(QFont("Arial", 28, QFont.Weight.Bold))
+        layout.addWidget(self.title)
+
+        # Spacer centre (entre le titre et le tracker)
+        layout.addItem(
+            QSpacerItem(40, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        )
+
+        # Widget Tracker à droite
+        self.tracker_widget = TrackerWidgetPanel()
+        layout.addWidget(self.tracker_widget)
+
+        container.setLayout(layout)
+        return container
 
     def _create_separator(self) -> QFrame:
         line = QFrame()
@@ -84,7 +105,6 @@ class ParliaHome(QWidget):
         label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
 
-        # On passe le vrai callback ici
         self.settings_panel = SettingsPanel(
             update_record_callback=self.transcription_panel.update_record_button_state
         )
@@ -94,9 +114,6 @@ class ParliaHome(QWidget):
         return container
 
     def _create_transcription_block(self) -> QWidget:
-        """
-        Crée un bloc pour la transcription.
-        """
         container = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -113,14 +130,10 @@ class ParliaHome(QWidget):
         return container
 
     def _create_action_block(self) -> QWidget:
-        """
-        Crée un bloc pour les actions.
-        """
         container = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Placeholder pour le contenu futur
         label = QLabel(ParliaSettings.LABEL_ACTIONS_TITLE)
         label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
         layout.addWidget(label)
