@@ -82,8 +82,8 @@ class HomePanel(QWidget):
         # Conteneur droit : contenu existant
         right_container = QWidget()
         layout = QVBoxLayout()
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(30, 10, 30, 10)
+        layout.setSpacing(10)
 
         header_row = self._create_title_and_tracker_row()
         separator1 = self._create_separator()
@@ -116,7 +116,7 @@ class HomePanel(QWidget):
         """
         container = QWidget()
         layout = QHBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 20)
+        layout.setContentsMargins(0, 0, 0, 5)  # Réduction de la marge inférieure
 
         # Spacer gauche
         layout.addItem(
@@ -125,7 +125,9 @@ class HomePanel(QWidget):
 
         # Titre centré
         self.title = QLabel(f"{ModuleInfo.name}")
-        self.title.setFont(QFont("Arial", 28, QFont.Weight.Bold))
+        self.title.setFont(
+            QFont("Arial", 22, QFont.Weight.Normal)
+        )  # Taille réduite et Normal
         layout.addWidget(self.title)
 
         # Spacer centre (entre le titre et le tracker)
@@ -151,10 +153,6 @@ class HomePanel(QWidget):
         container = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        label = QLabel(ParliaSettings.LABEL_SETTINGS_TITLE)
-        label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
-        layout.addWidget(label)
 
         self.settings_panel = SettingsPanel(
             update_record_callback=self.transcription_panel.update_record_button_state

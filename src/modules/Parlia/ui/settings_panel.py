@@ -25,6 +25,7 @@
 import os
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -33,6 +34,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -52,6 +54,7 @@ from modules.parlia.services.parlia_data import (
 )
 from modules.parlia.services.whisper_service import whisper_service
 from modules.parlia.settings import ParliaSettings
+from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
 
@@ -91,11 +94,48 @@ class SettingsPanel(QWidget):
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
+        # Ajouter l'en-tête avec le titre et le bouton engrenage en premier
+        self._add_header()
+
         # Ajouter la section du modèle
         self._add_model_section()
 
         # Ajouter la section de la phrase de conclusion
         self._add_conclusion_phrase_section()
+
+    def _add_header(self):
+        """
+        Ajouter un en-tête avec un titre et un bouton engrenage.
+        """
+        header_layout = QHBoxLayout()
+
+        # Titre "Paramètres"
+        title_label = QLabel("Paramètres", self)
+        title_label.setStyleSheet("font-size: 14px; font-weight: normal;")
+        header_layout.addWidget(title_label)
+
+        # Ajouter un stretch pour pousser le bouton engrenage à droite
+        header_layout.addStretch()
+
+        # Bouton engrenage
+        gear_button = QToolButton(self)
+        gear_button.setIcon(
+            QIcon("assets/icons/gear_icon.png")
+        )  # Utilisation d'une icône personnalisée
+        gear_button.setToolTip("Ouvrir les préférences")
+        gear_button.setFixedSize(24, 24)
+        gear_button.clicked.connect(self.open_preferences)
+        header_layout.addWidget(gear_button)
+
+        # Ajouter le layout à l'interface principale
+        self.main_layout.addLayout(header_layout)
+
+    def open_preferences(self):
+        """
+        Ouvre la fenêtre PreferencesDialog en modal.
+        """
+        preferences_dialog = PreferencesDialog(self)
+        preferences_dialog.exec_()
 
     def _add_model_section(self):
         """
