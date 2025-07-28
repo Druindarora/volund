@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QSizePolicy,
     QSpacerItem,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -41,6 +42,7 @@ from modules.parlia.services.parlia_data import get_max_duration
 from modules.parlia.services.parlia_state_manager import parlia_state
 from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.action_panel import ActionPanel
+from modules.parlia.ui.fileTree_panel import FileTreePanel
 from modules.parlia.ui.settings_panel import SettingsPanel
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 from modules.parlia.utils import hotkeys
@@ -54,15 +56,31 @@ class HomePanel(QWidget):
     def __init__(self, main_window: Optional[QMainWindow] = None):
         super().__init__()
         self.main_window = main_window
-        setattr(self, "module_name", "parlia")  # 🔧 important
+        setattr(self, "module_name", "parlia")
         logger.info("[UI] Initialisation du panneau d'accueil Parlia")
+
+        # Initialisation de l'état
+        self.selected_files = []
+
+        # Construction de l'UI
         self._build_ui()
+
+        # Connexion des hotkeys
         hotkeys.start_hotkey_listener(
             get_main_window=lambda: self.main_window,
             get_transcription_panel=lambda: self.transcription_panel,
         )
 
     def _build_ui(self):
+        splitter = QSplitter(Qt.Orientation.Horizontal, self)
+
+        # Sidebar gauche : FileTreePanel
+        self.file_tree_panel = FileTreePanel(root_path=".")
+        self.file_tree_panel.files_selected.connect(self._on_files_selected)
+        splitter.addWidget(self.file_tree_panel)
+
+        # Conteneur droit : contenu existant
+        right_container = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
@@ -84,7 +102,13 @@ class HomePanel(QWidget):
         layout.addWidget(action_block)
         layout.addStretch()
 
-        self.setLayout(layout)
+        right_container.setLayout(layout)
+        splitter.addWidget(right_container)
+
+        # Définir le splitter comme layout principal
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(splitter)
+        self.setLayout(main_layout)
 
     def _create_title_and_tracker_row(self) -> QWidget:
         """
@@ -173,7 +197,18 @@ class HomePanel(QWidget):
         container.setLayout(layout)
         return container
 
+    def _on_files_selected(self, file_list):
+        """Met à jour la liste des fichiers sélectionnés."""
+        self.selected_files = file_list
+        logger.info(f"[UI] Fichiers sélectionnés : {self.selected_files}")
+
+    def get_selected_files(self):
+        """Retourne la liste des fichiers sélectionnés."""
+        return self.selected_files
+
     def cleanup(self):
+        if hasattr(self, "file_tree_panel"):
+            self.file_tree_panel.files_selected.disconnect(self._on_files_selected)
         if hasattr(self, "transcription_panel"):
             parlia_state.unregister_ui_component(self.transcription_panel)
         if hasattr(self, "action_panel"):
