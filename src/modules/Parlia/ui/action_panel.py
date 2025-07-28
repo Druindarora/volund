@@ -51,6 +51,9 @@ from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.dialogs.action_settings_dialog import ActionSettingsDialog
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 from modules.parlia.utils.stylesheet_loader import load_qss_for
+from src.core.logger_manager import get_logger
+
+logger = get_logger("ActionPanel")
 
 
 class ActionPanel(QWidget):
@@ -297,7 +300,7 @@ class ActionPanel(QWidget):
         try:
             parlia_state.unregister_ui_component(self)
         except Exception as e:
-            print(f"[Panel] Erreur lors du désabonnement : {e}")
+            logger.error(f"[Panel] Erreur lors du désabonnement : {e}")
         super().closeEvent(event)
 
     def open_prompt_editor(self):

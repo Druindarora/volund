@@ -53,6 +53,9 @@ from modules.parlia.services.parlia_data import (
 from modules.parlia.services.whisper_service import whisper_service
 from modules.parlia.settings import ParliaSettings
 from modules.parlia.utils.stylesheet_loader import load_qss_for
+from src.core.logger_manager import get_logger
+
+logger = get_logger("SettingsPanel")
 
 
 class SettingsPanel(QWidget):
@@ -253,7 +256,7 @@ class SettingsPanel(QWidget):
             )
 
     def _on_new_phrase_clicked(self):
-        print("New phrase button clicked")
+        logger.info("New phrase button clicked")
         self._save_custom_phrase()  # Appeler la méthode de sauvegarde
 
     def _save_custom_phrase(self):
@@ -340,7 +343,9 @@ class SettingsPanel(QWidget):
         Met à jour l'affichage et les boutons d’enregistrement.
         """
         if model_name == ParliaSettings.LABEL_NO_MODEL_SELECTED:
-            print("[INFO] Aucun modèle sélectionné. Déchargement du modèle en cours.")
+            logger.info(
+                "[INFO] Aucun modèle sélectionné. Déchargement du modèle en cours."
+            )
             unload_model()
             no_model_name = ParliaSettings.LABEL_NO_MODEL_SELECTED
             set_model_name(no_model_name)
@@ -351,7 +356,7 @@ class SettingsPanel(QWidget):
             return
 
         if model_name:
-            print(f"Modèle sélectionné _on_model_selected : {model_name}")
+            logger.info(f"Modèle sélectionné _on_model_selected : {model_name}")
             set_model_name(model_name)
 
             whisper_service.load_model_async(
@@ -371,7 +376,7 @@ class SettingsPanel(QWidget):
 
         set_conclusion_text(custom_phrase)
 
-        print(f"Phrase de conclusion sauvegardée : {custom_phrase}")
+        logger.info(f"Phrase de conclusion sauvegardée : {custom_phrase}")
 
     def apply_ui_state(self):
         """

@@ -18,12 +18,20 @@
 
 # ✅ Aucun problème bloquant. Fichier parfaitement sain.
 
+import logging
 from pathlib import Path
 from typing import Optional
 
 import whisper  # Assure-toi d’avoir `openai-whisper` installé via `pip install -U openai-whisper`
 
 from modules.parlia.services.parlia_state_manager import parlia_state
+
+# Configuration du logger
+from src.core.logger_manager import get_logger
+
+logger = get_logger("whisper")
+
+logger.setLevel(logging.DEBUG)
 
 _current_model: Optional[whisper.Whisper] = None  # type: Optional[whisper.Whisper]
 
@@ -35,12 +43,12 @@ def load_model(model_path: str):
     global _current_model
 
     if _current_model is not None:
-        print("[INFO] Un modèle est déjà chargé. Ignorer la demande.")
+        logger.info("Un modèle est déjà chargé. Ignorer la demande.")
         return
 
     # Cas 1 : modèle intégré (fourni par Whisper directement)
     if model_path in ["tiny", "base", "small", "medium", "large"]:
-        print(f"[INFO] Chargement du modèle Whisper intégré : {model_path}")
+        logger.info(f"Chargement du modèle Whisper intégré : {model_path}")
         _current_model = whisper.load_model(model_path)
 
     else:
@@ -50,23 +58,23 @@ def load_model(model_path: str):
         model_dir = get_model_folder_path()
 
         if not model_dir:
-            print(
-                "[ERREUR] Aucun dossier modèle défini dans les préférences utilisateur."
+            logger.error(
+                "Aucun dossier modèle défini dans les préférences utilisateur."
             )
             return
 
         full_path = Path(model_dir) / model_path
 
         if full_path.exists():
-            print(
-                f"[INFO] Chargement du modèle Whisper depuis fichier : {full_path.resolve()}"
+            logger.info(
+                f"Chargement du modèle Whisper depuis fichier : {full_path.resolve()}"
             )
             _current_model = whisper.load_model(str(full_path))
         else:
-            print(f"[ERREUR] Le modèle spécifié est introuvable : {full_path}")
+            logger.error(f"Le modèle spécifié est introuvable : {full_path}")
             return
 
-    print(f"[INFO] ✅ Modèle chargé avec succès : {model_path}")
+    logger.info(f"✅ Modèle chargé avec succès : {model_path}")
     parlia_state.set_whisper_ready(True)
 
 
@@ -77,10 +85,10 @@ def unload_model():
     global _current_model
 
     if _current_model is None:
-        print("[INFO] Aucun modèle à décharger.")
+        logger.info("Aucun modèle à décharger.")
         return
 
-    print(f"[INFO] Déchargement du modèle.")
+    logger.info("Déchargement du modèle.")
     _current_model = None
     parlia_state.set_whisper_ready(False)
 
@@ -106,11 +114,11 @@ def transcribe(audio_path: str) -> str:
     if _current_model is None:
         raise RuntimeError("Aucun modèle Whisper n'est chargé.")
 
-    print(f"[INFO] Lancement de la transcription réelle via Whisper.")
+    logger.info("Lancement de la transcription réelle via Whisper.")
     result = _current_model.transcribe(audio_path)
 
     # Ajout d’un log pour vérification
-    print("[DEBUG] Résultat brut de Whisper :", result)
+    logger.debug(f"Résultat brut de Whisper : {result}")
 
     text = result.get("text", "")
     if isinstance(text, str):

@@ -3,7 +3,10 @@ import io
 import os
 import sys
 
+from core.logger_manager import get_logger
 from core.window_config import load_window_state, save_window_state
+
+logger = get_logger("MainWindow")
 
 if sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -138,23 +141,39 @@ class MainWindow(QMainWindow):
             save_last_module(module_name)
 
     def _load_module(self, module_name: str):
+        logger.info(f"[_load_module] Tentative de chargement : {module_name}")
+
         if module_name == "home":
-            return HomeScreen(main_window=self)
+            widget = HomeScreen(main_window=self)
+            setattr(widget, "module_name", "home")
+            logger.info("[_load_module] HomeScreen instancié avec succès")
+            return widget
 
         try:
             full_module_path = f"modules.{module_name}"
+            logger.info(f"[_load_module] importlib -> {full_module_path}")
             mod = importlib.import_module(full_module_path)
+            logger.info("[_load_module] Import réussi")
 
             if hasattr(mod, "launch"):
-                return mod.launch(parent=self)
+                widget = mod.launch(parent=self)
+                if widget is None:
+                    logger.error(
+                        f"[_load_module] launch() de {module_name} a renvoyé None"
+                    )
+                else:
+                    setattr(widget, "module_name", module_name)
+                    logger.info(
+                        f"[_load_module] Widget {module_name} instancié : {widget}"
+                    )
+                return widget
 
-            print(
-                f"⚠️ Le module '{module_name}' ne contient pas de fonction launch valide."
-            )
-        except ModuleNotFoundError:
-            print(f"❌ Module introuvable : {module_name}")
+            logger.error(f"[_load_module] Pas de fonction launch() dans {module_name}")
+
         except Exception as e:
-            print(f"❌ Erreur lors du chargement du module '{module_name}' : {e}")
+            logger.exception(
+                f"[_load_module] Erreur lors du chargement de {module_name}: {e}"
+            )
 
         return None
 

@@ -19,8 +19,10 @@ from PySide6.QtWidgets import QFileDialog, QTextEdit
 from modules.parlia.config import config
 from modules.parlia.services.utils import run_countdown
 from modules.trakia.services.tracker_service import log_message
+from src.core.logger_manager import get_logger
 
 CHATGPT_WINDOW_PREFIX = "[ChatRelay]"
+logger = get_logger("ChatGPTService")
 
 
 def looking_for_window(window_prefix: str) -> str | None:
@@ -47,12 +49,12 @@ def send_text_to_chatgpt(text: str, status_callback=None):
             pyperclip.copy(text)
             pyautogui.hotkey("ctrl", "v")
             pyautogui.press("enter")
-            print("[Parlia] ✅ Texte collé et envoyé à ChatRelay")
+            logger.info("[Parlia] ✅ Texte collé et envoyé à ChatRelay")
             if status_callback:
                 status_callback("✅ Texte envoyé à ChatGPT", True)
             return True
         else:
-            print("[Parlia] ❌ Aucune fenêtre [ChatRelay] trouvée.")
+            logger.error("[Parlia] ❌ Aucune fenêtre [ChatRelay] trouvée.")
             if status_callback:
                 status_callback("❌ Aucune fenêtre [ChatRelay] trouvée.", False)
             return False
@@ -62,11 +64,11 @@ def send_text_to_chatgpt(text: str, status_callback=None):
             message = pyperclip.paste()
             try:
                 log_message(message)
-                print("[Parlia] ✅ Message enregistré via Trakia local")
+                logger.info("[Parlia] ✅ Message enregistré via Trakia local")
                 if status_callback:
                     status_callback("✅ Message enregistré localement", True)
             except Exception as e:
-                print("[Parlia] ❌ Erreur Trakia :", e)
+                logger.error(f"[Parlia] ❌ Erreur Trakia : {e}")
                 if status_callback:
                     status_callback("❌ Erreur lors de l’enregistrement", False)
 
@@ -83,7 +85,7 @@ def send_text_to_chatgpt(text: str, status_callback=None):
         return True
     except Exception as e:
         error_message = f"❌ Erreur lors de l’envoi : {e}"
-        print(f"[Parlia] {error_message}")
+        logger.error(f"[Parlia] {error_message}")
         if status_callback:
             status_callback(error_message, False)
         return None
@@ -106,7 +108,7 @@ def format_files_for_chatgpt(file_paths: list[str]) -> str:
 def add_files_to_text_area(text_area: QTextEdit):
     current_text = text_area.toPlainText().strip()
     if not current_text:
-        print(
+        logger.warning(
             "⚠️ Aucune consigne initiale. Ajoutez du texte avant d’attacher des fichiers."
         )
         return

@@ -9,10 +9,14 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, Signal
 
+from src.core.logger_manager import get_logger
+
 try:
     import pyaudio
 except ImportError:
     pyaudio = None
+
+logger = get_logger("AudioService")
 
 
 class AudioRecorder(QObject):
@@ -41,7 +45,7 @@ class AudioRecorder(QObject):
         )
         self.service.stream = stream
         self.service.start_time = time.monotonic()
-        print("Enregistrement démarré...")
+        logger.info("Enregistrement démarré...")
 
         while (
             self._running
@@ -53,7 +57,7 @@ class AudioRecorder(QObject):
             self.update_time.emit(elapsed)
 
         self.service._save_audio(self.frames)
-        print("Enregistrement terminé.")
+        logger.info("Enregistrement terminé.")
         self.finished.emit()
 
 

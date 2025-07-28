@@ -9,6 +9,10 @@
 
 from PySide6.QtWidgets import QApplication
 
+from src.core.logger_manager import get_logger
+
+logger = get_logger("ActionService")
+
 
 # 💡 À migrer dans utils/clipboard_utils.py
 def copy_to_clipboard(text: str):
@@ -17,7 +21,7 @@ def copy_to_clipboard(text: str):
     """
     clipboard = QApplication.clipboard()
     clipboard.setText(text)
-    print(f"Text copied to clipboard: {text}")
+    logger.info(f"Text copied to clipboard: {text}")
 
 
 # 💡 Rôle très spécifique à ChatRelay → à intégrer dans le bouton ChatRelay du panneau concerné
@@ -28,7 +32,7 @@ def copy_chatrelay_text():
     """
     text = "[ChatRelay]"
     copy_to_clipboard(text)
-    print("Text '[ChatRelay]' copied to clipboard.")
+    logger.info("Text '[ChatRelay]' copied to clipboard.")
 
 
 # 💡 Appartient naturellement à `transcription_panel.py`
@@ -36,4 +40,4 @@ def copy_chatrelay_text():
 def copy_text(transcription_panel):
     text = transcription_panel.get_transcription_text()
     copy_to_clipboard(text)
-    print(f"Transcription text copied to clipboard: {text}")
+    logger.info(f"Transcription text copied to clipboard: {text}")

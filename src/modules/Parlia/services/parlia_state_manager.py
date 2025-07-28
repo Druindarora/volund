@@ -7,6 +7,9 @@
 
 
 from config.env import is_dev
+from src.core.logger_manager import get_logger
+
+logger = get_logger("ParliaStateManager")
 
 
 class ParliaStateManager:
@@ -24,14 +27,14 @@ class ParliaStateManager:
         self._subscribers.append(callback)
 
     def notify(self):
-        print(f"[ParliaState] Callbacks actifs : {len(self._subscribers)}")
+        logger.info(f"[ParliaState] Callbacks actifs : {len(self._subscribers)}")
         for cb in self._subscribers[:]:
             try:
                 cb()
             except RuntimeError:
                 self._subscribers.remove(cb)
             except Exception as e:
-                print(f"[ParliaState] Callback UI cassé : {e}")
+                logger.error(f"[ParliaState] Callback UI cassé : {e}")
 
     # === Setters avec notification ===
 
@@ -61,11 +64,11 @@ class ParliaStateManager:
         'ready', 'error', 'neutral', 'warning'
         """
         if is_dev():
-            print("=== [DEBUG] get_status_info ===")
-            print(f"[DEBUG] is_transcribing : {self.is_transcribing}")
-            print(f"[DEBUG] is_recording    : {self.is_recording}")
-            print(f"[DEBUG] whisper_ready   : {self.whisper_ready}")
-            print(f"[DEBUG] max_duration    : {self.max_duration}")
+            logger.debug("=== [DEBUG] get_status_info ===")
+            logger.debug(f"[DEBUG] is_transcribing : {self.is_transcribing}")
+            logger.debug(f"[DEBUG] is_recording    : {self.is_recording}")
+            logger.debug(f"[DEBUG] whisper_ready   : {self.whisper_ready}")
+            logger.debug(f"[DEBUG] max_duration    : {self.max_duration}")
 
         if self.is_transcribing:
             return "Transcription en cours", "warning"
@@ -123,11 +126,11 @@ class ParliaStateManager:
                 ):
                     component.apply_ui_state()
                 else:
-                    print(
+                    logger.warning(
                         f"[ParliaState] Composant {component} ne supporte pas apply_ui_state()"
                     )
             except Exception as e:
-                print(f"[ParliaState] UI update échouée pour {component} : {e}")
+                logger.error(f"[ParliaState] UI update échouée pour {component} : {e}")
 
 
 parlia_state = ParliaStateManager()

@@ -45,12 +45,17 @@ from modules.parlia.ui.settings_panel import SettingsPanel
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 from modules.parlia.utils import hotkeys
 from modules.trakia.ui.tracker_widget import TrackerWidgetPanel
+from src.core.logger_manager import get_logger
+
+logger = get_logger("ParliaHome")
 
 
-class ParliaHome(QWidget):
+class HomePanel(QWidget):
     def __init__(self, main_window: Optional[QMainWindow] = None):
         super().__init__()
         self.main_window = main_window
+        setattr(self, "module_name", "parlia")  # 🔧 important
+        logger.info("[UI] Initialisation du panneau d'accueil Parlia")
         self._build_ui()
         hotkeys.start_hotkey_listener(
             get_main_window=lambda: self.main_window,
@@ -178,4 +183,4 @@ class ParliaHome(QWidget):
 
     def apply_ui_state(self):
         # logique spécifique pour mettre à jour ce panel
-        print(f"[UI] Mise à jour de {self.objectName()}")
+        logger.info(f"[UI] Mise à jour de {self.objectName()}")

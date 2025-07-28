@@ -3,7 +3,61 @@ import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from colorama import Fore, init
+
 APP_NAME = "Volund"
+
+init(autoreset=True)
+
+
+class ColoredFormatter(logging.Formatter):
+    LEVEL_COLORS = {
+        logging.DEBUG: Fore.CYAN + "🐛 DEBUG",
+        logging.INFO: Fore.GREEN + "✅ INFO",
+        logging.WARNING: Fore.YELLOW + "⚠️ WARNING",
+        logging.ERROR: Fore.RED + "❌ ERROR",
+        logging.CRITICAL: Fore.MAGENTA + "🔥 CRITICAL",
+    }
+
+    def format(self, record):
+        level_name = self.LEVEL_COLORS.get(record.levelno, record.levelname)
+        record.levelname = level_name
+        return super().format(record)
+
+
+def get_logger(module_name: str) -> logging.Logger:
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+
+    logger = logging.getLogger(module_name)
+    if logger.handlers:  # éviter doublons
+        return logger
+
+    logger.setLevel(logging.DEBUG)
+
+    # Handler console coloré
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_formatter = ColoredFormatter(
+        "%(levelname)s %(asctime)s - %(message)s", datefmt="%H:%M:%S"
+    )
+    console_handler.setFormatter(console_formatter)
+
+    # Handler fichier classique
+    file_handler = logging.FileHandler(
+        logs_dir / f"{module_name}.log", encoding="utf-8"
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    file_handler.setFormatter(file_formatter)
+
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+
+    return logger
 
 
 def setup_logger(debug: bool = False):

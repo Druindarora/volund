@@ -47,6 +47,9 @@ from modules.parlia.services.parlia_state_manager import parlia_state
 from modules.parlia.services.whisper_service import whisper_service
 from modules.parlia.settings import ParliaSettings
 from modules.parlia.utils.stylesheet_loader import load_qss_for
+from src.core.logger_manager import get_logger
+
+logger = get_logger("TranscriptionPanel")
 
 
 class TranscriptionPanel(QWidget):
@@ -122,10 +125,10 @@ class TranscriptionPanel(QWidget):
         """
         Toggle the recording state and update the button text/icon.
         """
-        print("[PANEL] toggle_recording() exécuté")
+        logger.info("[PANEL] toggle_recording() exécuté")
 
         if not self.is_recording:
-            print("Starting recording...")
+            logger.info("Starting recording...")
             self.is_recording = True
             self.record_button.setText(ParliaSettings.LABEL_STOP)
             self.record_button.setObjectName("stopButton")
@@ -136,9 +139,9 @@ class TranscriptionPanel(QWidget):
             self.record_button.style().polish(self.record_button)
             audio_service.start_recording()
             audio_service.connect_timer(self.update_timer_label)
-            print("Recording started...")
+            logger.info("Recording started...")
         else:
-            print("Stopping recording...")
+            logger.info("Stopping recording...")
             self.is_recording = False
             self.record_button.setText(ParliaSettings.LABEL_RECORD)
             self.record_button.setObjectName("recordButton")
@@ -148,7 +151,7 @@ class TranscriptionPanel(QWidget):
             self.record_button.style().unpolish(self.record_button)
             self.record_button.style().polish(self.record_button)
             audio_service.stop_recording()
-            print("Recording stopped...")
+            logger.info("Recording stopped...")
 
             # ⏳ Transcription asynchrone
             parlia_state.set_transcribing(True)
@@ -209,7 +212,7 @@ class TranscriptionPanel(QWidget):
 
     def _load_saved_duration(self):
         saved_duration_key = get_max_duration()
-        print(f"Loaded saved duration key: {saved_duration_key}")
+        logger.info(f"Loaded saved duration key: {saved_duration_key}")
 
         if (
             saved_duration_key is not None
@@ -378,7 +381,7 @@ class TranscriptionPanel(QWidget):
         Retrieve the text from the transcription text field.
         """
         text = self.transcription_text.toPlainText()
-        print(f"Transcription text retrieved: {text}")
+        logger.info(f"Transcription text retrieved: {text}")
         return text
 
     def update_record_button_state(self):
@@ -390,7 +393,7 @@ class TranscriptionPanel(QWidget):
             parlia_state.unregister_ui_component(self)
             whisper_service.cleanup()
         except Exception as e:
-            print(f"[Panel] Erreur lors du désabonnement : {e}")
+            logger.error(f"[Panel] Erreur lors du désabonnement : {e}")
         super().closeEvent(event)
 
     def update_status_label(self):
@@ -404,7 +407,7 @@ class TranscriptionPanel(QWidget):
 
     def apply_ui_state(self):
         if not hasattr(self, "record_button"):
-            print("[WARN] apply_ui_state() appelé trop tôt")
+            logger.warning("[WARN] apply_ui_state() appelé trop tôt")
             return
         self.record_button.setEnabled(parlia_state.is_ready_to_record())
         self.max_duration_combobox.setEnabled(not parlia_state.is_ui_locked())

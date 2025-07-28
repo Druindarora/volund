@@ -16,9 +16,9 @@ path = ""
 
 def launch(parent=None) -> QWidget:
     # ⚠️ Import déplacé ici pour éviter l'importation circulaire
-    from modules.parlia.ui.home_panel import ParliaHome
+    from modules.parlia.ui.home_panel import HomePanel
 
-    return ParliaHome(main_window=parent)
+    return HomePanel(main_window=parent)
 
 
 ModuleInfo = BaseModuleInfo(

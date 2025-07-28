@@ -38,6 +38,9 @@ import pyperclip
 from modules.parlia.config import config
 from modules.parlia.services.parlia_data import get_prompt
 from modules.parlia.services.utils import run_countdown
+from src.core.logger_manager import get_logger
+
+logger = get_logger("VSCodeService")
 
 # --- Constants moved to config ---
 VSCODE_WINDOW_TITLE = config.vscode_window_title
@@ -104,6 +107,7 @@ def focus_and_paste_in_vscode(text, status_callback=None, countdown_callback=Non
                     status_callback("❌ VS Code non trouvé", False)
 
         except Exception as e:
+            logger.error(f"❌ Erreur : {e}")
             if status_callback:
                 status_callback(f"❌ Erreur : {e}", False)
         finally:
@@ -114,7 +118,7 @@ def focus_and_paste_in_vscode(text, status_callback=None, countdown_callback=Non
     thread.start()
 
     if len(active_threads) > 10:  # Limite arbitraire
-        print("Trop de threads actifs !")
+        logger.warning("Trop de threads actifs !")
 
 
 # --- Wrapper fonctionnel pour PySide6 ---
@@ -179,7 +183,7 @@ def explain_code_to_vscode(
 
     except Exception as e:
         error_message = f"❌ Erreur lors de la préparation de l'invite : {e}"
-        print(error_message)
+        logger.error(error_message)
         if status_callback:
             status_callback(error_message, False)
 
@@ -204,6 +208,6 @@ def analyze_code_to_vscode(status_callback=None, countdown_callback=None):
 
     except Exception as e:
         error_message = f"❌ Erreur lors de la préparation de l'invite : {e}"
-        print(error_message)
+        logger.error(error_message)
         if status_callback:
             status_callback(error_message, False)

@@ -25,6 +25,9 @@ from modules.parlia.services.parlia_data import (
     get_conclusion_text,
     get_include_conclusion,
 )
+from src.core.logger_manager import get_logger
+
+logger = get_logger("WhisperService")
 
 
 class _AsyncTranscriber(QObject):
@@ -38,7 +41,7 @@ class _AsyncTranscriber(QObject):
 
     def run(self):
         start = time.monotonic()
-        print("[INFO] Lancement de la transcription réelle via Whisper.")
+        logger.info("[INFO] Lancement de la transcription réelle via Whisper.")
 
         try:
             # Lancer dans un thread de mesure
@@ -62,7 +65,7 @@ class _AsyncTranscriber(QObject):
             self.finished.emit(text)
 
         except Exception as e:
-            print(f"[ERREUR ASYNC] Transcription échouée : {e}")
+            logger.error(f"[ERREUR ASYNC] Transcription échouée : {e}")
             self.finished.emit(None)
         finally:
             self._running = False
@@ -77,45 +80,41 @@ class WhisperService:
         """
         audio_path = audio_service.get_last_audio_path()
 
-        # Vérifier si un modèle est chargé
         if not is_model_loaded():
-            print("[ERREUR] Aucun modèle chargé dans WhisperManager.")
+            logger.error("[ERREUR] Aucun modèle chargé dans WhisperManager.")
             callback(None)
             return
 
-        # Vérifier si le fichier audio existe
         if not os.path.exists(audio_path):
-            print(f"[ERREUR] Fichier audio introuvable : {audio_path}")
+            logger.error(f"[ERREUR] Fichier audio introuvable : {audio_path}")
             callback(None)
             return
 
         try:
-            # Lancer la transcription
-            print(f"[INFO] Début de la transcription pour : {audio_path}")
+            logger.info(f"[INFO] Début de la transcription pour : {audio_path}")
             transcribed_text = transcribe(audio_path)
 
-            # Ajouter la phrase de conclusion si activée
             if get_include_conclusion():
                 conclusion_text = get_conclusion_text()
                 if conclusion_text:
                     transcribed_text += f"\n\n{conclusion_text}"
 
-            print("[INFO] Transcription terminée.")
+            logger.info("[INFO] Transcription terminée.")
             callback(transcribed_text)
         except Exception as e:
-            print(f"[ERREUR] Échec de la transcription : {e}")
+            logger.error(f"[ERREUR] Échec de la transcription : {e}")
             callback(None)
 
     def transcribe_async(self, callback: Callable[[Optional[str]], None]):
         audio_path = audio_service.get_last_audio_path()
 
         if not is_model_loaded():
-            print("[ERREUR] Aucun modèle chargé.")
+            logger.error("[ERREUR] Aucun modèle chargé.")
             callback(None)
             return
 
         if not os.path.exists(audio_path):
-            print(f"[ERREUR] Fichier audio introuvable : {audio_path}")
+            logger.error(f"[ERREUR] Fichier audio introuvable : {audio_path}")
             callback(None)
             return
 
@@ -132,7 +131,7 @@ class WhisperService:
         self._thread.start()
 
         def on_thread_finished():
-            print("[DEBUG] Thread transcription terminé proprement.")
+            logger.debug("[DEBUG] Thread transcription terminé proprement.")
 
         self._thread.finished.connect(on_thread_finished)
 
@@ -142,7 +141,7 @@ class WhisperService:
 
     def cleanup(self):
         if hasattr(self, "_thread") and self._thread.isRunning():
-            print("[INFO] Attente de la fin du thread transcription...")
+            logger.info("[INFO] Attente de la fin du thread transcription...")
             self._thread.quit()
             self._thread.wait()
 
@@ -153,11 +152,11 @@ class WhisperService:
 
             def run(self):
                 try:
-                    print(f"[INFO] Chargement asynchrone du modèle {model_name}")
+                    logger.info(f"[INFO] Chargement asynchrone du modèle {model_name}")
                     load_model(model_name)
                     self.finished.emit()
                 except Exception as e:
-                    print(f"[ERREUR] Chargement échoué : {e}")
+                    logger.error(f"[ERREUR] Chargement échoué : {e}")
                     self.failed.emit(str(e))
 
         self._loader_thread = QThread()
@@ -168,7 +167,7 @@ class WhisperService:
         if on_finished:
             self._loader_worker.finished.connect(on_finished)
 
-        self._loader_worker.failed.connect(lambda err: print("[ERREUR]", err))
+        self._loader_worker.failed.connect(lambda err: logger.error(f"[ERREUR] {err}"))
 
         self._loader_worker.finished.connect(self._loader_thread.quit)
         self._loader_worker.finished.connect(self._loader_worker.deleteLater)
