@@ -118,7 +118,14 @@ class ParliaStateManager:
         self.cleanup_invalid_components()
         for component in self._ui_components[:]:
             try:
-                component.apply_ui_state()
+                if hasattr(component, "apply_ui_state") and callable(
+                    component.apply_ui_state
+                ):
+                    component.apply_ui_state()
+                else:
+                    print(
+                        f"[ParliaState] Composant {component} ne supporte pas apply_ui_state()"
+                    )
             except Exception as e:
                 print(f"[ParliaState] UI update échouée pour {component} : {e}")
 

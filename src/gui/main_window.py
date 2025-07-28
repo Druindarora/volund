@@ -1,18 +1,24 @@
-# main_window.py
-
 import importlib
 import io
 import os
 import sys
 
+from core.window_config import load_window_state, save_window_state
+
 if sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-from PySide6.QtCore import QTimer
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, QTimer
+from PySide6.QtGui import QGuiApplication, QIcon
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QMainWindow,
+    QScrollArea,
+    QSizePolicy,
+    QStackedWidget,
+    QWidget,
+)
 
-from core.window_config import load_window_state, save_window_state
 from gui.home_screen import HomeScreen
 from gui.sidebar import Sidebar
 from utils.dev_state import load_last_module, save_last_module
@@ -43,7 +49,6 @@ class MainWindow(QMainWindow):
         icon_path = os.path.join("assets/icons/", "volund.ico")
         self.setWindowIcon(QIcon(icon_path))
 
-        # Central widget et layout doivent être prêts avant le show
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
@@ -51,20 +56,25 @@ class MainWindow(QMainWindow):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        self._save_timer = QTimer()
-        self._save_timer.setInterval(1000)
-        self._save_timer.setSingleShot(True)
-        self._save_timer.timeout.connect(self._save_window_state)
-
-        # Charger l'état après avoir préparé le timer
         state = load_window_state()
 
-        if state.get("maximized", False):
-            # Appeler showMaximized via un QTimer pour éviter les conflits init
-            QTimer.singleShot(0, self.showMaximized)
-        else:
-            self.resize(state["width"], state["height"])
-            self.move(state["x"], state["y"])
+        # Trouver l'écran demandé
+        target_screen = None
+        if state.get("screen"):
+            for s in QGuiApplication.screens():
+                if s.name() == state["screen"]:
+                    target_screen = s
+                    break
+
+        def show_on_screen():
+            if self.windowHandle() and target_screen:
+                self.windowHandle().setScreen(target_screen)
+            if state.get("maximized", True):
+                self.showMaximized()
+            else:
+                self.showNormal()
+
+        QTimer.singleShot(0, show_on_screen)
 
         self.setStyleSheet(load_qss("assets/styles/default.qss"))
 
@@ -74,92 +84,110 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.sidebar)
 
     def _create_content_area(self):
-        self.content_area = QWidget()
-        self.content_layout = QVBoxLayout()
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
-        self.content_area.setLayout(self.content_layout)
+        self.content_area = QStackedWidget()
+        self.content_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.main_layout.addWidget(self.content_area)
 
     def _create_home(self):
         self.home_screen = HomeScreen(main_window=self)
-        self.content_layout.addWidget(self.home_screen)
+        setattr(self.home_screen, "module_name", "home")
+        self.home_screen.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self.content_area.addWidget(self.home_screen)
+        self.content_area.setCurrentWidget(self.home_screen)
 
     def handle_favorite_toggle(self, module_name: str, is_favorite: bool):
         self.sidebar.update_favorites()
 
     def handle_sidebar_click(self, module_name: str):
-        # Nettoyer la zone centrale
-        while self.content_layout.count():
-            item = self.content_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                if hasattr(widget, "cleanup"):
-                    widget.cleanup()  # type: ignore[attr-defined]
-                widget.setParent(None)
-                widget.deleteLater()
+        # Vérifier si déjà présent
+        for i in range(self.content_area.count()):
+            widget = self.content_area.widget(i)
+            if getattr(widget, "module_name", None) == module_name:
+                self.content_area.setCurrentWidget(widget)
+                save_last_module(module_name)
+                return
 
-        # Charger le bon module via un switch
-        self._load_module(module_name)
-        # Enregistrez le module courant (dev only)
-        save_last_module(module_name)
+        # Sinon, charger le module
+        widget = self._load_module(module_name)
+        if widget:
+            setattr(widget, "module_name", module_name)
+
+            # Vérifier si le contenu dépasse l'espace dispo
+            available = self.content_area.size()
+            if (
+                widget.sizeHint().height() > available.height()
+                or widget.sizeHint().width() > available.width()
+            ):
+                scroll = QScrollArea()
+                scroll.setWidgetResizable(True)
+                scroll.setWidget(widget)
+                setattr(scroll, "module_name", module_name)
+                self.content_area.addWidget(scroll)
+                self.content_area.setCurrentWidget(scroll)
+            else:
+                widget.setSizePolicy(
+                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+                )
+                self.content_area.addWidget(widget)
+                self.content_area.setCurrentWidget(widget)
+
+            save_last_module(module_name)
 
     def _load_module(self, module_name: str):
-        """
-        Charge dynamiquement le module demandé, en appelant sa fonction `launch(parent)` si disponible.
-        """
         if module_name == "home":
-            self._create_home()
-            return
+            return HomeScreen(main_window=self)
 
         try:
-            # Import dynamique du module Python depuis src.modules
             full_module_path = f"modules.{module_name}"
             mod = importlib.import_module(full_module_path)
 
-            # Vérifie la présence de la fonction launch(parent)
             if hasattr(mod, "launch"):
-                widget = mod.launch(parent=self)
-                if widget is not None:
-                    self.content_layout.addWidget(widget)
-                    return
+                return mod.launch(parent=self)
 
             print(
                 f"⚠️ Le module '{module_name}' ne contient pas de fonction launch valide."
             )
-
         except ModuleNotFoundError:
             print(f"❌ Module introuvable : {module_name}")
         except Exception as e:
             print(f"❌ Erreur lors du chargement du module '{module_name}' : {e}")
 
-    def closeEvent(self, event):
-        self._save_window_state()
-        super().closeEvent(event)
-
-    def _save_window_state(self):
-        maximized = self.isMaximized()
-        if maximized:
-            # Pas besoin de sauver coords, juste le flag
-            save_window_state(0, 0, 0, 0, maximized=True)
-        else:
-            x = self.x()
-            y = self.y()
-            width = self.width()
-            height = self.height()
-            print(f"Saving window state: x={x}, y={y}, width={width}, height={height}")
-            save_window_state(x, y, width, height, maximized=False)
-
-    def resizeEvent(self, event):
-        self._save_timer.start()
-        super().resizeEvent(event)
-
-    def moveEvent(self, event):
-        self._save_timer.start()
-        super().moveEvent(event)
+        return None
 
     def restart_app(self):
         python = sys.executable
         os.execl(python, python, *sys.argv)
+
+    def closeEvent(self, event):
+        maximized = self.isMaximized()
+        screen_name = None
+        if self.windowHandle() and self.windowHandle().screen():
+            screen_name = self.windowHandle().screen().name()
+
+        save_window_state(maximized=maximized, screen=screen_name)
+        super().closeEvent(event)
+
+    def moveEvent(self, event):
+        maximized = self.isMaximized()
+        screen_name = None
+        if self.windowHandle() and self.windowHandle().screen():
+            screen_name = self.windowHandle().screen().name()
+
+        save_window_state(maximized=maximized, screen=screen_name)
+        super().moveEvent(event)
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.Type.WindowStateChange:
+            maximized = self.isMaximized()
+            screen_name = None
+            if self.windowHandle() and self.windowHandle().screen():
+                screen_name = self.windowHandle().screen().name()
+            save_window_state(maximized=maximized, screen=screen_name)
+        super().changeEvent(event)
 
 
 def load_qss(path: str) -> str:

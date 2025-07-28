@@ -175,3 +175,7 @@ class ParliaHome(QWidget):
             parlia_state.unregister_ui_component(self.action_panel)
         if hasattr(self, "settings_panel"):
             parlia_state.unregister_ui_component(self.settings_panel)
+
+    def apply_ui_state(self):
+        # logique spécifique pour mettre à jour ce panel
+        print(f"[UI] Mise à jour de {self.objectName()}")
