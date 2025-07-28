@@ -43,11 +43,7 @@ class MainWindow(QMainWindow):
         icon_path = os.path.join("assets/icons/", "volund.ico")
         self.setWindowIcon(QIcon(icon_path))
 
-        state = load_window_state()
-        self.resize(state["width"], state["height"])
-        self.move(state["x"], state["y"])
-        self.setStyleSheet(load_qss("assets/styles/default.qss"))
-
+        # Central widget et layout doivent être prêts avant le show
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
@@ -60,8 +56,21 @@ class MainWindow(QMainWindow):
         self._save_timer.setSingleShot(True)
         self._save_timer.timeout.connect(self._save_window_state)
 
+        # Charger l'état après avoir préparé le timer
+        state = load_window_state()
+
+        if state.get("maximized", False):
+            # Appeler showMaximized via un QTimer pour éviter les conflits init
+            QTimer.singleShot(0, self.showMaximized)
+        else:
+            self.resize(state["width"], state["height"])
+            self.move(state["x"], state["y"])
+
+        self.setStyleSheet(load_qss("assets/styles/default.qss"))
+
     def _create_sidebar(self):
         self.sidebar = Sidebar(on_module_clicked=self.handle_sidebar_click)
+        self.sidebar.restart_button.clicked.connect(self.restart_app)
         self.main_layout.addWidget(self.sidebar)
 
     def _create_content_area(self):
@@ -128,11 +137,17 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def _save_window_state(self):
-        x = self.x()
-        y = self.y()
-        width = self.width()
-        height = self.height()
-        save_window_state(x, y, width, height)
+        maximized = self.isMaximized()
+        if maximized:
+            # Pas besoin de sauver coords, juste le flag
+            save_window_state(0, 0, 0, 0, maximized=True)
+        else:
+            x = self.x()
+            y = self.y()
+            width = self.width()
+            height = self.height()
+            print(f"Saving window state: x={x}, y={y}, width={width}, height={height}")
+            save_window_state(x, y, width, height, maximized=False)
 
     def resizeEvent(self, event):
         self._save_timer.start()
@@ -141,6 +156,10 @@ class MainWindow(QMainWindow):
     def moveEvent(self, event):
         self._save_timer.start()
         super().moveEvent(event)
+
+    def restart_app(self):
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
 
 def load_qss(path: str) -> str:

@@ -29,7 +29,7 @@ class Sidebar(QFrame):
         self.setObjectName("Sidebar")
 
     def _create_main_buttons(self):
-        """Crée les boutons principaux (Home et Settings)."""
+        """Crée les boutons principaux (Home, Restart et Settings)."""
         self.home_button = QPushButton()
         if callable(self.on_module_clicked):
             self.home_button.clicked.connect(lambda: self.on_module_clicked("home"))  # type: ignore
@@ -37,6 +37,14 @@ class Sidebar(QFrame):
         self.home_button.setIcon(QIcon(ICONS["home"]))
         self.home_button.setIconSize(QSize(35, 35))
         self.home_button.setFixedSize(40, 40)
+
+        # Nouveau bouton Restart
+        self.restart_button = QPushButton()
+        self.restart_button.setIcon(
+            QIcon(ICONS["refresh"])
+        )  # ajoute l’icône dans ICONS
+        self.restart_button.setIconSize(QSize(28, 28))
+        self.restart_button.setFixedSize(40, 40)
 
         self.settings_button = QPushButton()
         self.settings_button.setIcon(QIcon(ICONS["settings"]))
@@ -71,6 +79,9 @@ class Sidebar(QFrame):
 
         # Ajouter un stretch pour pousser le reste en bas
         layout.addStretch()
+
+        # Bouton Restart juste avant Settings
+        layout.addWidget(self.restart_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Ajouter le bouton Settings en bas
         layout.addWidget(self.settings_button, alignment=Qt.AlignmentFlag.AlignHCenter)

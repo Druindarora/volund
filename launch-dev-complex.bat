@@ -25,6 +25,7 @@ echo.
 
 :: === [1] POSITION MANUELLE (désactivée par défaut) ===
 :: === Position actuelle : X=-967, Y=0, Largeur=974, Hauteur=1039
+:: Position actuelle : X=-2887, Y=-693, Largeur=974, Hauteur=1039
 powershell -ExecutionPolicy Bypass -File "move_console.ps1"
 
 :: === [2] LANCEMENT DE VØLUND ===

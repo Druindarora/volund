@@ -21,9 +21,6 @@ def load_window_state():
     return data if isinstance(data, dict) else DEFAULT_STATE
 
 
-def save_window_state(x: int, y: int, width: int, height: int):
-    """
-    Sauvegarde la position et la taille de la fenêtre principale dans le fichier JSON.
-    """
-    state = {"x": x, "y": y, "width": width, "height": height}
+def save_window_state(x: int, y: int, width: int, height: int, maximized: bool = False):
+    state = {"x": x, "y": y, "width": width, "height": height, "maximized": maximized}
     user_data.set(MODULE_NAME, WINDOW_KEY, state)

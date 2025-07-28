@@ -7,5 +7,6 @@ BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "image
 ICONS = {
     "home": os.path.join(BASE_PATH, "volund.png"),
     "settings": os.path.join(BASE_PATH, "settings.png"),
+    "refresh": os.path.join(BASE_PATH, "refresh.png"),
     # Ajoute ici tes autres icônes
 }

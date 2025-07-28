@@ -8,4 +8,4 @@ public class Win32 {
 "@
 Add-Type -AssemblyName System.Windows.Forms
 $hwnd = (Get-Process | Where-Object { $_.MainWindowTitle -eq [Console]::Title }).MainWindowHandle
-[Win32]::MoveWindow($hwnd, -967, 0, 974, 1039, $true)
+[Win32]::MoveWindow($hwnd, -2887, -693, 974, 1039, $true)
