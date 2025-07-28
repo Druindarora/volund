@@ -31,9 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from modules.parlia.services.action_service import copy_chatrelay_text, copy_text
 from modules.parlia.services.chatgptService import (
-    add_files_to_text_area,
     send_text_to_chatgpt,
 )
 
@@ -50,6 +48,8 @@ from modules.parlia.services.vsCodeService import (
 from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.dialogs.action_settings_dialog import ActionSettingsDialog
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
+from modules.parlia.utils.chatrelay_filetools import add_files_to_text_area
+from modules.parlia.utils.clipboard_utils import copy_to_clipboard
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
 
@@ -121,8 +121,16 @@ class ActionPanel(QWidget):
         button = QPushButton(ParliaSettings.LABEL_CHATRELAY)
         button.setIcon(qta.icon("fa5s.paper-plane", color="#333333"))
         button.setObjectName("chatRelayButton")
-        button.clicked.connect(copy_chatrelay_text)
+        button.clicked.connect(self.copy_chatrelay_text)
         return button
+
+    def copy_chatrelay_text(self):
+        """
+        Copy the text '[ChatRelay]' to the clipboard.
+        """
+        text = "[ChatRelay]"
+        copy_to_clipboard(text)
+        logger.info("Text '[ChatRelay]' copied to clipboard.")
 
     def create_copy_text_button(self):
         """
@@ -131,8 +139,13 @@ class ActionPanel(QWidget):
         button = QPushButton(ParliaSettings.LABEL_COPY_TEXT)
         button.setIcon(qta.icon("fa5s.copy", color="#333333"))
         button.setObjectName("copyTextButton")
-        button.clicked.connect(lambda: copy_text(self.transcription_panel))
+        button.clicked.connect(lambda: self.copy_text(self.transcription_panel))
         return button
+
+    def copy_text(self, transcription_panel: TranscriptionPanel):
+        text = transcription_panel.get_transcription_text()
+        copy_to_clipboard(text)
+        logger.info(f"Transcription text copied to clipboard: {text}")
 
     def create_add_files_button(self):
         button_add_files = QPushButton(ParliaSettings.LABEL_ADD_FILES)

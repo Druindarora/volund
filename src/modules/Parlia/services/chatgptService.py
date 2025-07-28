@@ -14,10 +14,9 @@ import time
 import pyautogui
 import pygetwindow as gw
 import pyperclip
-from PySide6.QtWidgets import QFileDialog, QTextEdit
 
 from modules.parlia.config import config
-from modules.parlia.services.utils import run_countdown
+from modules.parlia.utils.helpers import run_countdown
 from modules.trakia.services.tracker_service import log_message
 from src.core.logger_manager import get_logger
 
@@ -89,35 +88,3 @@ def send_text_to_chatgpt(text: str, status_callback=None):
         if status_callback:
             status_callback(error_message, False)
         return None
-
-
-# 🔄 À déplacer dans `ui/helpers/chatrelay_filetools.py`
-def format_files_for_chatgpt(file_paths: list[str]) -> str:
-    blocks = []
-    for path in file_paths:
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-            blocks.append(f"=== File: {path.split('/')[-1]} ===\n{content}")
-        except Exception as e:
-            blocks.append(f"=== File: {path.split('/')[-1]} ===\n[Read error: {e}]")
-    return "\n\n".join(blocks)
-
-
-# 🔄 À déplacer dans `ui/helpers/chatrelay_filetools.py`
-def add_files_to_text_area(text_area: QTextEdit):
-    current_text = text_area.toPlainText().strip()
-    if not current_text:
-        logger.warning(
-            "⚠️ Aucune consigne initiale. Ajoutez du texte avant d’attacher des fichiers."
-        )
-        return
-
-    file_dialog = QFileDialog()
-    file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
-    file_dialog.setNameFilter("All Files (*)")
-
-    if file_dialog.exec():
-        selected_files = file_dialog.selectedFiles()
-        formatted_content = format_files_for_chatgpt(selected_files)
-        text_area.append(f"\n\n{formatted_content}\n")

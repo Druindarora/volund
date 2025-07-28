@@ -37,7 +37,7 @@ import pyperclip
 
 from modules.parlia.config import config
 from modules.parlia.services.parlia_data import get_prompt
-from modules.parlia.services.utils import run_countdown
+from modules.parlia.utils.helpers import run_countdown
 from src.core.logger_manager import get_logger
 
 logger = get_logger("VSCodeService")

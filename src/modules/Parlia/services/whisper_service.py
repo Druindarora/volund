@@ -6,69 +6,26 @@
 # 🟡 La lenteur au chargement n’est pas liée à ce fichier mais au `load_model()` (manager)
 # --------------------------------------------------
 # ✅ Propositions :
-# - Extraire `_AsyncTranscriber` dans un `workers/transcriber_worker.py`
-# - Isoler le `Loader` de `load_model_async()` dans un `workers/model_loader_worker.py`
-# - Ajout futur d’un logger structuré à la place des `print()`
 # - Ajouter une méthode de "ping" modèle pour test plus rapide
 # --------------------------------------------------
 
 
 import os
-import time
 from typing import Callable, Optional
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QThread
 
-from modules.parlia.core.whisper_manager import is_model_loaded, load_model, transcribe
+from modules.parlia.core.whisper_manager import is_model_loaded, transcribe
 from modules.parlia.services.audioService import audio_service
 from modules.parlia.services.parlia_data import (
     get_conclusion_text,
     get_include_conclusion,
 )
+from modules.parlia.workers.model_loader_worker import ModelLoaderWorker
+from modules.parlia.workers.transcriber_worker import TranscriberWorker
 from src.core.logger_manager import get_logger
 
 logger = get_logger("WhisperService")
-
-
-class _AsyncTranscriber(QObject):
-    finished = Signal(object)
-    update_time = Signal(float)
-
-    def __init__(self, path: str):
-        super().__init__()
-        self.audio_path = path
-        self._running = True
-
-    def run(self):
-        start = time.monotonic()
-        logger.info("[INFO] Lancement de la transcription réelle via Whisper.")
-
-        try:
-            # Lancer dans un thread de mesure
-            def ticker():
-                while self._running:
-                    elapsed = time.monotonic() - start
-                    self.update_time.emit(elapsed)
-                    time.sleep(0.2)
-
-            from threading import Thread
-
-            timer_thread = Thread(target=ticker, daemon=True)
-            timer_thread.start()
-
-            # Transcription bloquante
-            text = transcribe(self.audio_path)
-            if get_include_conclusion():
-                conclusion = get_conclusion_text()
-                if conclusion:
-                    text += f"\n\n{conclusion}"
-            self.finished.emit(text)
-
-        except Exception as e:
-            logger.error(f"[ERREUR ASYNC] Transcription échouée : {e}")
-            self.finished.emit(None)
-        finally:
-            self._running = False
 
 
 class WhisperService:
@@ -119,7 +76,7 @@ class WhisperService:
             return
 
         self._thread = QThread()
-        self._worker = _AsyncTranscriber(audio_path)
+        self._worker = TranscriberWorker(audio_path)
         self._worker.moveToThread(self._thread)
 
         self._thread.started.connect(self._worker.run)
@@ -146,21 +103,8 @@ class WhisperService:
             self._thread.wait()
 
     def load_model_async(self, model_name: str, on_finished: Optional[Callable] = None):
-        class Loader(QObject):
-            finished = Signal()
-            failed = Signal(str)
-
-            def run(self):
-                try:
-                    logger.info(f"[INFO] Chargement asynchrone du modèle {model_name}")
-                    load_model(model_name)
-                    self.finished.emit()
-                except Exception as e:
-                    logger.error(f"[ERREUR] Chargement échoué : {e}")
-                    self.failed.emit(str(e))
-
         self._loader_thread = QThread()
-        self._loader_worker = Loader()
+        self._loader_worker = ModelLoaderWorker(model_name)
         self._loader_worker.moveToThread(self._loader_thread)
 
         self._loader_thread.started.connect(self._loader_worker.run)
