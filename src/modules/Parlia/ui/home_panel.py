@@ -40,7 +40,6 @@ from modules.parlia import ModuleInfo
 from modules.parlia.services import parlia_data
 from modules.parlia.services.parlia_data import get_max_duration
 from modules.parlia.services.parlia_state_manager import parlia_state
-from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.action_panel import ActionPanel
 from modules.parlia.ui.fileTree_panel import FileTreePanel
 from modules.parlia.ui.settings_panel import SettingsPanel
@@ -167,10 +166,6 @@ class HomePanel(QWidget):
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        label = QLabel(ParliaSettings.LABEL_TRANSCRIPTION_TITLE)
-        label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
-        layout.addWidget(label)
-
         self.transcription_panel = TranscriptionPanel(self)
         parlia_data.set_max_duration(int(get_max_duration()))
         layout.addWidget(self.transcription_panel)
@@ -182,10 +177,6 @@ class HomePanel(QWidget):
         container = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        label = QLabel(ParliaSettings.LABEL_ACTIONS_TITLE)
-        label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
-        layout.addWidget(label)
 
         self.action_panel = ActionPanel(
             transcription_panel=self.transcription_panel, parent=self

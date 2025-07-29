@@ -24,8 +24,8 @@
 
 import os
 
+import qtawesome as qta
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
 from modules.parlia.core.whisper_manager import (
     unload_model,
 )
+from modules.parlia.i18n.parlia_strings import ParliaStrings
 from modules.parlia.services.parlia_data import (
     get_conclusion_text,
     get_include_conclusion,
@@ -53,7 +54,6 @@ from modules.parlia.services.parlia_data import (
     set_model_name,
 )
 from modules.parlia.services.whisper_service import whisper_service
-from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
@@ -110,8 +110,8 @@ class SettingsPanel(QWidget):
         header_layout = QHBoxLayout()
 
         # Titre "Paramètres"
-        title_label = QLabel("Paramètres", self)
-        title_label.setStyleSheet("font-size: 14px; font-weight: normal;")
+        title_label = QLabel(ParliaStrings.Home.SETTINGS_TITLE, self)
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         header_layout.addWidget(title_label)
 
         # Ajouter un stretch pour pousser le bouton engrenage à droite
@@ -119,11 +119,9 @@ class SettingsPanel(QWidget):
 
         # Bouton engrenage
         gear_button = QToolButton(self)
-        gear_button.setIcon(
-            QIcon("assets/icons/gear_icon.png")
-        )  # Utilisation d'une icône personnalisée
+        gear_button.setIcon(qta.icon("fa5s.cog", color="#E5E5E5"))
         gear_button.setToolTip("Ouvrir les préférences")
-        gear_button.setFixedSize(24, 24)
+        gear_button.setFixedSize(32, 32)
         gear_button.clicked.connect(self.open_preferences)
         header_layout.addWidget(gear_button)
 
@@ -144,7 +142,7 @@ class SettingsPanel(QWidget):
         # Ligne : bouton + chemin
         folder_line_layout = QHBoxLayout()
 
-        self.select_folder_button = QPushButton(ParliaSettings.LABEL_CHOOSE_FOLDER)
+        self.select_folder_button = QPushButton(ParliaStrings.Settings.CHOOSE_FOLDER)
         self.select_folder_button.setObjectName("SelectFolderButton")
         self.select_folder_button.clicked.connect(self._select_model_folder)
         folder_line_layout.addWidget(self.select_folder_button)
@@ -193,7 +191,7 @@ class SettingsPanel(QWidget):
         """Met à jour le texte du label du chemin du dossier."""
         if self.current_folder:
             self.path_label.setText(
-                ParliaSettings.LABEL_CURRENT_FOLDER.format(folder=self.current_folder)
+                ParliaStrings.Settings.CURRENT_FOLDER.format(folder=self.current_folder)
             )
         else:
             self.path_label.setText("")
@@ -215,7 +213,7 @@ class SettingsPanel(QWidget):
 
         # 1. Checkbox d'activation
         self.include_conclusion_checkbox = QCheckBox(
-            ParliaSettings.LABEL_INCLUDE_CONCLUSION
+            ParliaStrings.Settings.INCLUDE_CONCLUSION
         )
         self.include_conclusion_checkbox.stateChanged.connect(
             self._on_include_conclusion_changed
@@ -244,7 +242,7 @@ class SettingsPanel(QWidget):
         self.new_phrase_label.setStyleSheet("font-weight: bold;")
         self.custom_phrase_input = QLineEdit()
         self.custom_phrase_input.setPlaceholderText(
-            ParliaSettings.LABEL_PLACEHOLDER_CUSTOM_PHRASE
+            ParliaStrings.Settings.PLACEHOLDER_CUSTOM_PHRASE
         )
         new_phrase_layout.addWidget(self.new_phrase_label)
         new_phrase_layout.addWidget(self.custom_phrase_input)
@@ -288,11 +286,11 @@ class SettingsPanel(QWidget):
                 self.current_phrase_display.setText(conclusion_text)
             else:
                 self.current_phrase_display.setText(
-                    ParliaSettings.LABEL_NO_CURRENT_CONCLUSION
+                    ParliaStrings.Settings.NO_CURRENT_CONCLUSION
                 )
         else:
             self.current_phrase_display.setText(
-                ParliaSettings.LABEL_NO_CURRENT_CONCLUSION
+                ParliaStrings.Settings.NO_CURRENT_CONCLUSION
             )
 
     def _on_new_phrase_clicked(self):
@@ -319,7 +317,7 @@ class SettingsPanel(QWidget):
         Méthode pour gérer la sélection du dossier contenant les modèles.
         """
         folder = QFileDialog.getExistingDirectory(
-            self, ParliaSettings.LABEL_CHOOSE_FOLDER
+            self, ParliaStrings.Settings.CHOOSE_FOLDER
         )
         if folder:
             self.current_folder = folder
@@ -329,7 +327,7 @@ class SettingsPanel(QWidget):
 
             # Mettre à jour l’étiquette pour afficher le chemin choisi
             self.path_label.setText(
-                ParliaSettings.LABEL_CURRENT_FOLDER.format(folder=folder)
+                ParliaStrings.Settings.CURRENT_FOLDER.format(folder=folder)
             )
 
             # Appeler _update_model_list() pour lister les fichiers de modèles du dossier
@@ -344,7 +342,7 @@ class SettingsPanel(QWidget):
         - Sinon, ne sélectionne rien.
         """
         if not self.current_folder or not os.path.isdir(self.current_folder):
-            self.path_label.setText(ParliaSettings.LABEL_ERROR_INVALID_FOLDER)
+            self.path_label.setText(ParliaStrings.Settings.ERROR_INVALID_FOLDER)
             self.model_combobox.setVisible(False)
             return
 
@@ -356,7 +354,7 @@ class SettingsPanel(QWidget):
         if self.model_list:
             self.model_combobox.clear()
             self.model_combobox.addItem(
-                ParliaSettings.LABEL_NO_MODEL_SELECTED, userData=None
+                ParliaStrings.Settings.NO_MODEL_SELECTED, userData=None
             )  # Valeur neutre
             self.model_combobox.addItems(self.model_list)
             self.model_combobox.setVisible(True)
@@ -373,7 +371,7 @@ class SettingsPanel(QWidget):
                 pass
         else:
             self.model_combobox.setVisible(False)
-            self.path_label.setText(ParliaSettings.LABEL_NO_MODEL_SELECTED)
+            self.path_label.setText(ParliaStrings.Settings.NO_MODEL_SELECTED)
 
     def _on_model_selected(self, model_name):
         """
@@ -382,12 +380,12 @@ class SettingsPanel(QWidget):
         - Sinon : charge le modèle choisi.
         Met à jour l'affichage et les boutons d’enregistrement.
         """
-        if model_name == ParliaSettings.LABEL_NO_MODEL_SELECTED:
+        if model_name == ParliaStrings.Settings.NO_MODEL_SELECTED:
             logger.info(
                 "[INFO] Aucun modèle sélectionné. Déchargement du modèle en cours."
             )
             unload_model()
-            no_model_name = ParliaSettings.LABEL_NO_MODEL_SELECTED
+            no_model_name = ParliaStrings.Settings.NO_MODEL_SELECTED
             set_model_name(no_model_name)
 
             if self.update_record_callback:

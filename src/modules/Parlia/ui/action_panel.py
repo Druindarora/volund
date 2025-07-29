@@ -27,10 +27,12 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
+from modules.parlia.i18n.parlia_strings import ParliaStrings
 from modules.parlia.services.chatgptService import (
     send_text_to_chatgpt,
 )
@@ -45,7 +47,6 @@ from modules.parlia.services.vsCodeService import (
     focus_vscode_and_refacto,
     focus_vscode_qt,
 )
-from modules.parlia.settings import ParliaSettings
 from modules.parlia.ui.dialogs.action_settings_dialog import ActionSettingsDialog
 from modules.parlia.ui.transcription_panel import TranscriptionPanel
 from modules.parlia.utils.chatrelay_filetools import add_files_to_text_area
@@ -61,46 +62,65 @@ class ActionPanel(QWidget):
         super().__init__(parent)
         self.transcription_panel = transcription_panel
 
-        main_layout = QVBoxLayout()
+        self.main_layout = QVBoxLayout()
+
+        # Ajouter le header en premier
+        self._add_header()
 
         # Status label en haut
-        self.status_label = QLabel(ParliaSettings.LABEL_READY)
+        self.status_label = QLabel(ParliaStrings.Action.READY)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(self.status_label)
-
-        # Bouton paramètres (à droite du label)
-        self._add_prompt_settings_button(main_layout)
+        self.main_layout.addWidget(self.status_label)
 
         # First row
         row1 = self.create_row_one()
-        main_layout.addLayout(row1)
+        self.main_layout.addLayout(row1)
 
         # Second row
         row2 = self.create_row_two()
-        main_layout.addLayout(row2)
+        self.main_layout.addLayout(row2)
 
         # Third row
         row3 = self.create_row_three()
-        main_layout.addLayout(row3)
+        self.main_layout.addLayout(row3)
 
-        self.setLayout(main_layout)
+        self.setLayout(self.main_layout)
 
         load_qss_for(self)
         parlia_state.register_ui_component(self)
 
-    def _add_prompt_settings_button(self, layout: QVBoxLayout):
-        settings_button = QPushButton()
-        settings_button.setIcon(qta.icon("fa5s.cog", color="#E5E5E5"))
-        settings_button.setToolTip("Modifier les prompts personnalisés")
-        settings_button.setFixedSize(32, 32)
-        settings_button.clicked.connect(self.open_prompt_editor)
-
+    def _add_header(self):
+        """
+        Ajouter un en-tête avec un titre et un bouton engrenage.
+        """
         header_layout = QHBoxLayout()
-        header_layout.addWidget(self.status_label)
-        header_layout.addStretch()
-        header_layout.addWidget(settings_button)
 
-        layout.addLayout(header_layout)
+        # Titre "Actions"
+        title_label = QLabel(ParliaStrings.Home.ACTIONS_TITLE, self)
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header_layout.addWidget(title_label)
+
+        # Ajouter un stretch pour pousser le bouton engrenage à droite
+        header_layout.addStretch()
+
+        # Bouton engrenage
+        gear_button = QToolButton(self)
+        gear_button.setIcon(qta.icon("fa5s.cog", color="#E5E5E5"))
+        gear_button.setToolTip("Modifier les prompts personnalisés")
+        gear_button.setFixedSize(32, 32)
+        gear_button.clicked.connect(self.open_actions_settings)
+        header_layout.addWidget(gear_button)
+
+        # Ajouter le layout à l'interface principale
+        self.main_layout.addLayout(header_layout)
+
+    def open_actions_settings(self):
+        """
+        Ouvre la fenêtre ActionSettingsDialog en modal.
+        """
+        action_settings_dialog = ActionSettingsDialog(self)
+        action_settings_dialog.exec_()
 
     def create_row_one(self):
         """
@@ -118,7 +138,7 @@ class ActionPanel(QWidget):
         """
         Create the "Copier [ChatRelay]" button.
         """
-        button = QPushButton(ParliaSettings.LABEL_CHATRELAY)
+        button = QPushButton(ParliaStrings.Action.CHATRELAY)
         button.setIcon(qta.icon("fa5s.paper-plane", color="#333333"))
         button.setObjectName("chatRelayButton")
         button.clicked.connect(self.copy_chatrelay_text)
@@ -136,7 +156,7 @@ class ActionPanel(QWidget):
         """
         Create the "Copier le texte" button.
         """
-        button = QPushButton(ParliaSettings.LABEL_COPY_TEXT)
+        button = QPushButton(ParliaStrings.Action.COPY_TEXT)
         button.setIcon(qta.icon("fa5s.copy", color="#333333"))
         button.setObjectName("copyTextButton")
         button.clicked.connect(lambda: self.copy_text(self.transcription_panel))
@@ -148,7 +168,7 @@ class ActionPanel(QWidget):
         logger.info(f"Transcription text copied to clipboard: {text}")
 
     def create_add_files_button(self):
-        button_add_files = QPushButton(ParliaSettings.LABEL_ADD_FILES)
+        button_add_files = QPushButton(ParliaStrings.Action.ADD_FILES)
         button_add_files.setIcon(qta.icon("fa5s.file-medical", color="#333333"))
         button_add_files.setObjectName("addFilesButton")
         button_add_files.clicked.connect(
@@ -171,7 +191,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus vers ChatGPT" button.
         """
-        button = QPushButton(ParliaSettings.LABEL_FOCUS_CHATGPT)
+        button = QPushButton(ParliaStrings.Action.FOCUS_CHATGPT)
         button.setIcon(qta.icon("fa5s.comment-dots", color="#333333"))
         button.setObjectName("focusChatGPTButton")
         button.clicked.connect(
@@ -186,7 +206,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus vers VS Code" button.
         """
-        button = QPushButton(ParliaSettings.LABEL_FOCUS_VSCODE)
+        button = QPushButton(ParliaStrings.Action.FOCUS_VSCODE)
         button.setIcon(qta.icon("fa5s.terminal", color="#333333"))
         button.setObjectName("focusVSCodeButton")
         button.clicked.connect(
@@ -202,7 +222,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus et Code" button.
         """
-        button = QPushButton(ParliaSettings.LABEL_FOCUS_AND_CODE)
+        button = QPushButton(ParliaStrings.Action.FOCUS_AND_CODE)
         button.setIcon(qta.icon("fa5s.clipboard", color="#333333"))
         button.setObjectName("focusAndCodeButton")
         button.clicked.connect(
@@ -235,7 +255,7 @@ class ActionPanel(QWidget):
         """
         Create the "Focus and Refacto" button.
         """
-        button = QPushButton(ParliaSettings.LABEL_FOCUS_AND_REFACTO)
+        button = QPushButton(ParliaStrings.Action.FOCUS_AND_REFACTO)
         button.setIcon(qta.icon("fa5s.magic", color="#333333"))
         button.setObjectName("focusAndRefactoButton")
         button.clicked.connect(
@@ -251,7 +271,7 @@ class ActionPanel(QWidget):
         """
         Create the "Expliquer le code" button.
         """
-        button = QPushButton(ParliaSettings.LABEL_EXPLAIN_CODE)
+        button = QPushButton(ParliaStrings.Action.EXPLAIN_CODE)
         button.setIcon(qta.icon("fa5s.question-circle", color="#333333"))
         button.setObjectName("explainCodeButton")
         button.clicked.connect(
@@ -267,7 +287,7 @@ class ActionPanel(QWidget):
         """
         Create the "Analyser le code" button.
         """
-        button = QPushButton(ParliaSettings.LABEL_ANALYZE_CODE)
+        button = QPushButton(ParliaStrings.Action.ANALYZE_CODE)
         button.setIcon(qta.icon("fa5s.bug", color="#333333"))
         button.setObjectName("analyzeCodeButton")
         button.clicked.connect(
@@ -315,7 +335,3 @@ class ActionPanel(QWidget):
         except Exception as e:
             logger.error(f"[Panel] Erreur lors du désabonnement : {e}")
         super().closeEvent(event)
-
-    def open_prompt_editor(self):
-        dialog = ActionSettingsDialog(self)
-        dialog.exec_()
