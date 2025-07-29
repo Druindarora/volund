@@ -225,7 +225,7 @@ class TranscriptionPanel(QWidget):
         Load saved duration from UserDataManager and save changes to parlia.jsonData.
         """
         max_duration_label = QLabel(ParliaStrings.Transcription.MAX_DURATION)
-        self.max_duration_combobox = QComboBox()
+        self.max_duration_combobox = QComboBox(self)
 
         self._populate_duration_options()
         self._load_saved_duration()

@@ -43,8 +43,8 @@ def load_model(model_path: str):
     global _current_model
 
     if _current_model is not None:
-        logger.info("Un modèle est déjà chargé. Ignorer la demande.")
-        return
+        logger.info("Un modèle est déjà chargé. Déchargement en cours...")
+        unload_model()
 
     # Cas 1 : modèle intégré (fourni par Whisper directement)
     if model_path in ["tiny", "base", "small", "medium", "large"]:

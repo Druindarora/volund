@@ -44,17 +44,23 @@ QLabel#PathLabel {
     color: #e0e0e0;
 }
 
-#ModelLabel {
-    min-width: 150px;
-    font-weight: bold;
-    font-size: 14px;
-    padding-right: 10px;
-}
-
 #ModelComboBox {
     min-width: 200px;
     max-width: 300px;
     height: 28px;
+}
+
+/* === STYLES UNIFORMES === */
+QLabel#statusLabel {
+    font-size: 14px;
+    font-weight: bold;
+    min-height: 24px;
+}
+
+QComboBox, QPushButton {
+    min-width: 220px;
+    max-width: 140px;
+    font-size: 14px;
 }
 
 

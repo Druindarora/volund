@@ -63,7 +63,7 @@ class ParliaStrings:
         CURRENT_FOLDER = "Dossier sélectionné : {folder}"
 
     class Home:
-        SETTINGS_TITLE = "⚙️ Paramètres Whisper"
+        SETTINGS_TITLE = "⚙️ Paramètres"
         TRANSCRIPTION_TITLE = "📝 Transcription"
         ACTIONS_TITLE = "🔧 Actions"
 

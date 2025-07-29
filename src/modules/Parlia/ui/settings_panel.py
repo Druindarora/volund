@@ -22,38 +22,22 @@
 
 # ✅ À conserver tel quel pour l’instant. Il sert bien son rôle jusqu’à la prochaine refonte UI.
 
-import os
-
 import qtawesome as qta
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
-    QFileDialog,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QPushButton,
-    QToolButton,
+    QPushButton,  # Ajout de QPushButton
+    QSizePolicy,  # Ajout de QSizePolicy
+    QToolButton,  # Réintégration de QToolButton
     QVBoxLayout,
     QWidget,
 )
 
-from modules.parlia.core.whisper_manager import (
-    unload_model,
-)
 from modules.parlia.i18n.parlia_strings import ParliaStrings
-from modules.parlia.services.parlia_data import (
-    get_conclusion_text,
-    get_include_conclusion,
-    get_model_folder_path,
-    get_model_name,
-    set_conclusion_text,
-    set_include_conclusion,
-    set_model_folder_path,
-    set_model_name,
-)
-from modules.parlia.services.whisper_service import whisper_service
+from modules.parlia.services.ollama_service import OllamaService
+from modules.parlia.services.whisper_model_service import WhisperModelService
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
@@ -67,41 +51,210 @@ class SettingsPanel(QWidget):
         self.update_record_callback = update_record_callback
         self.current_folder = None
         self.model_list = []
+        self.ollama_service = OllamaService()
+        self.whisper_model_service = WhisperModelService()  # Initialisation du service
         self._load_user_preferences()
+
+        # Construire l'interface utilisateur principale
         self._build_ui()
         load_qss_for(self)
 
+        # Appeler les méthodes pour initialiser la liste des modèles et la sélection
+        self._update_model_list()
+        self.whisper_model_service.initializeModel(callback=self._afterModelSelected)
+        self.apply_ui_state()  # Appliquer l'état initial de l'interface utilisateur
+
     def _load_user_preferences(self):
         """
-        Charger les préférences utilisateur sauvegardées.
+        Charger les préférences utilisateur sauvegardées via WhisperModelService.
         """
         # Charger le chemin du dossier modèle
-        self.current_folder = get_model_folder_path()
+        self.current_folder = self.whisper_model_service.modelFolder
 
         # Charger le nom du modèle sélectionné
-        self.selected_model_name = get_model_name()
-
-        # Charger l'état de la case à cocher pour la phrase de conclusion
-        self.include_conclusion_state = get_include_conclusion()
-
-        # Charger le texte de la phrase de conclusion
-        self.custom_conclusion_phrase = get_conclusion_text()
+        self.selected_model_name = self.whisper_model_service.getSelectedModel()
 
     def _build_ui(self):
         """
-        Construire l'interface utilisateur principale.
+        Construire l'interface utilisateur principale avec un header en haut
+        et trois blocs côte à côte : Whisper, Ollama, et Assistant de codage.
         """
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
-        # Ajouter l'en-tête avec le titre et le bouton engrenage en premier
+        # Ajouter l'en-tête en haut
         self._add_header()
 
-        # Ajouter la section du modèle
-        self._add_model_section()
+        # Créer un layout horizontal pour les blocs
+        self.blocks_layout = QHBoxLayout()
 
-        # Ajouter la section de la phrase de conclusion
-        self._add_conclusion_phrase_section()
+        # Créer les trois blocs principaux
+        whisper_block = self._create_whisper_block()
+        ollama_block = self._create_ollama_block()
+        code_assistant_block = self._create_code_assistant_block()
+
+        # Ajouter les blocs au layout horizontal
+        self.blocks_layout.addWidget(whisper_block)
+        self.blocks_layout.addWidget(ollama_block)
+        self.blocks_layout.addWidget(code_assistant_block)
+
+        # Ajouter le layout horizontal au layout principal
+        self.main_layout.addLayout(self.blocks_layout)
+
+        # Rendre les blocs responsives
+        whisper_block.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+        ollama_block.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+        code_assistant_block.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+
+    def _set_status(self, value_label, text, status_type):
+        """
+        Met à jour uniquement la valeur colorée d'un QLabel de statut dynamique.
+        """
+        colors = {
+            "ready": "green",
+            "error": "red",
+            "warning": "orange",
+            "neutral": "gray",
+            "starting": "orange",  # Ajout de la couleur pour le statut "starting"
+        }
+        color = colors.get(status_type, "white")
+        value_label.setText(text)
+        value_label.setStyleSheet(f"color: {color}; font-weight: bold;")
+
+    def _create_whisper_block(self):
+        """
+        Crée le bloc pour Whisper avec un titre, un label de statut et une combo box.
+        """
+        whisper_widget = QWidget()
+        whisper_layout = QVBoxLayout()
+        whisper_widget.setLayout(whisper_layout)
+
+        # Titre
+        title = QLabel("🎤 Modèle Whisper")
+        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        whisper_layout.addWidget(title)
+
+        # Labels de statut côte à côte
+        status_layout = QHBoxLayout()
+        static_label = QLabel("Statut :")
+        static_label.setStyleSheet("color: white; font-weight: bold;")
+        static_label.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+
+        self.whisperStatusValue = QLabel("Inactif")
+        self.whisperStatusValue.setStyleSheet("color: red; font-weight: bold;")
+        self.whisperStatusValue.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+
+        status_layout.addWidget(static_label)
+        status_layout.addWidget(self.whisperStatusValue)
+        status_layout.addStretch()  # pousse l'espace libre après les labels
+        whisper_layout.addLayout(status_layout)
+
+        # ComboBox pour les modèles Whisper
+        self.whisperModelComboBox = QComboBox(self)
+        self.whisperModelComboBox.setObjectName("WhisperModelComboBox")
+        self.whisperModelComboBox.setVisible(True)
+        self.whisperModelComboBox.setFixedSize(220, 32)
+        self.whisperModelComboBox.currentTextChanged.connect(self._on_model_selected)
+        whisper_layout.addWidget(self.whisperModelComboBox)
+
+        whisper_layout.setSpacing(10)
+        whisper_layout.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
+        )
+
+        return whisper_widget
+
+    def _create_ollama_block(self):
+        """
+        Crée le bloc pour Ollama avec un titre, un label de statut et un bouton.
+        """
+        ollama_widget = QWidget()
+        ollama_layout = QVBoxLayout()
+        ollama_widget.setLayout(ollama_layout)
+
+        # Titre
+        title = QLabel("🤖 Ollama")
+        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        ollama_layout.addWidget(title)
+
+        # Labels de statut côte à côte
+        status_layout = QHBoxLayout()
+        static_label = QLabel("Statut :")
+        static_label.setStyleSheet("color: white; font-weight: bold;")
+        static_label.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+
+        self.ollama_status_value = QLabel("Inactif")
+        self.ollama_status_value.setStyleSheet("color: red; font-weight: bold;")
+        self.ollama_status_value.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+
+        status_layout.addWidget(static_label)
+        status_layout.addWidget(self.ollama_status_value)
+        status_layout.addStretch()  # pousse l'espace libre après les labels
+        ollama_layout.addLayout(status_layout)
+
+        # Bouton pour démarrer Ollama
+        self.ollama_start_button = QPushButton("Démarrer Ollama")
+        self.ollama_start_button.setFixedSize(220, 32)
+        self.ollama_start_button.clicked.connect(self._start_ollama)
+        ollama_layout.addWidget(self.ollama_start_button)
+
+        ollama_layout.setSpacing(10)
+        ollama_layout.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
+        )
+
+        return ollama_widget
+
+    def _create_code_assistant_block(self):
+        """
+        Crée le bloc pour l'Assistant de codage avec un titre, un label de statut et une combo box.
+        """
+        code_widget = QWidget()
+        code_layout = QVBoxLayout()
+        code_widget.setLayout(code_layout)
+
+        # Titre
+        title = QLabel("💻 Assistant de codage")
+        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        code_layout.addWidget(title)
+
+        # Label de statut
+        self.code_status_label = QLabel("Statut : ✅ OK")
+        self._set_status(self.code_status_label, "Statut : OK", status_type="ready")
+        # Appliquer des dimensions fixes et des identifiants
+        self.code_status_label.setFixedHeight(24)
+        self.code_status_label.setObjectName("statusLabel")
+        code_layout.addWidget(self.code_status_label)
+
+        # ComboBox pour les modèles
+        self.code_model_combobox = QComboBox(self)
+        self.code_model_combobox.addItems(["Mistral 7B", "Mixtral 8x7B", "CodeLlama"])
+        self.code_model_combobox.setFixedSize(220, 32)
+        self.code_model_combobox.currentTextChanged.connect(
+            self._on_code_model_selected
+        )
+        code_layout.addWidget(self.code_model_combobox)
+
+        code_layout.setSpacing(10)
+        code_layout.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
+        )
+
+        return code_widget
 
     def _add_header(self):
         """
@@ -135,290 +288,99 @@ class SettingsPanel(QWidget):
         preferences_dialog = PreferencesDialog(self)
         preferences_dialog.exec_()
 
-    def _add_model_section(self):
-        """
-        Section du modèle : bouton + chemin, puis combo + label en ligne.
-        """
-        # Ligne : bouton + chemin
-        folder_line_layout = QHBoxLayout()
-
-        self.select_folder_button = QPushButton(ParliaStrings.Settings.CHOOSE_FOLDER)
-        self.select_folder_button.setObjectName("SelectFolderButton")
-        self.select_folder_button.clicked.connect(self._select_model_folder)
-        folder_line_layout.addWidget(self.select_folder_button)
-
-        self.path_label = QLabel()
-        self.path_label.setObjectName("PathLabel")
-        self.path_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self._update_path_label()
-        folder_line_layout.addWidget(self.path_label)
-
-        self.main_layout.addLayout(folder_line_layout)
-
-        self.main_layout.addSpacing(10)
-
-        # ✅ Ligne combo + label
-        model_line_layout = QHBoxLayout()
-
-        # Label "Modèle sélectionné :"
-        label = QLabel("Modèle sélectionné :")
-        label.setObjectName("ModelLabel")
-        label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        label.setFixedWidth(150)  # 🔧 Largeur fixe raisonnable pour bien l’aligner
-
-        # ComboBox juste à côté
-        self.model_combobox = QComboBox(self)
-        self.model_combobox.setObjectName("ModelComboBox")
-        self.model_combobox.setWindowFlags(Qt.WindowType.Widget)
-        self.model_combobox.setVisible(False)
-        self.model_combobox.currentTextChanged.connect(self._on_model_selected)
-        self.model_combobox.setFixedWidth(220)  # 🔧 Largeur fixe élégante
-
-        # Ajout dans layout horizontal
-        model_line_layout.addWidget(label)
-        model_line_layout.addSpacing(10)  # 🔧 Petit écart visuel
-        model_line_layout.addWidget(self.model_combobox)
-        model_line_layout.addStretch()  # ✅ Repousse le reste à droite
-
-        self.main_layout.addLayout(model_line_layout)
-
-        # ✅ Chargement des modèles si dossier déjà connu
-        if self.current_folder and os.path.isdir(self.current_folder):
-            self._update_model_list()
-            self._set_initial_model_selection()
-
-    def _update_path_label(self):
-        """Met à jour le texte du label du chemin du dossier."""
-        if self.current_folder:
-            self.path_label.setText(
-                ParliaStrings.Settings.CURRENT_FOLDER.format(folder=self.current_folder)
-            )
-        else:
-            self.path_label.setText("")
-
-    def _set_initial_model_selection(self):
-        """Configure la sélection initiale dans la combo box des modèles."""
-        if self.selected_model_name in self.model_list:
-            self.model_combobox.setCurrentText(self.selected_model_name)
-            self.model_combobox.setVisible(True)
-
-    def _add_conclusion_phrase_section(self):
-        """
-        Ajoute une section claire et structurée pour gérer la phrase de conclusion.
-        """
-        conclusion_layout = QVBoxLayout()
-
-        # Espacement avant bloc
-        self.main_layout.addSpacing(15)
-
-        # 1. Checkbox d'activation
-        self.include_conclusion_checkbox = QCheckBox(
-            ParliaStrings.Settings.INCLUDE_CONCLUSION
-        )
-        self.include_conclusion_checkbox.stateChanged.connect(
-            self._on_include_conclusion_changed
-        )
-
-        self.include_conclusion_checkbox.blockSignals(True)
-        if self.include_conclusion_state is not None:
-            self.include_conclusion_checkbox.setChecked(self.include_conclusion_state)
-        self.include_conclusion_checkbox.blockSignals(False)
-        conclusion_layout.addWidget(self.include_conclusion_checkbox)
-
-        # 2. Ligne : Phrase actuelle (label + champ readonly)
-        current_phrase_layout = QHBoxLayout()
-        self.current_label = QLabel("Phrase actuelle :")  # 🔧 deviens attribut
-        self.current_label.setStyleSheet("font-weight: bold;")
-        self.current_phrase_display = QLineEdit()
-        self.current_phrase_display.setReadOnly(True)
-        self.current_phrase_display.setStyleSheet("color: gray;")
-        current_phrase_layout.addWidget(self.current_label)
-        current_phrase_layout.addWidget(self.current_phrase_display)
-        conclusion_layout.addLayout(current_phrase_layout)
-
-        # 3. Ligne : Nouvelle phrase (label + champ modifiable)
-        new_phrase_layout = QHBoxLayout()
-        self.new_phrase_label = QLabel("Nouvelle phrase :")  # 🔧 deviens attribut
-        self.new_phrase_label.setStyleSheet("font-weight: bold;")
-        self.custom_phrase_input = QLineEdit()
-        self.custom_phrase_input.setPlaceholderText(
-            ParliaStrings.Settings.PLACEHOLDER_CUSTOM_PHRASE
-        )
-        new_phrase_layout.addWidget(self.new_phrase_label)
-        new_phrase_layout.addWidget(self.custom_phrase_input)
-        conclusion_layout.addLayout(new_phrase_layout)
-
-        # 4. Bouton d’enregistrement
-        self.new_phrase_button = QPushButton("💾 Enregistrer la phrase")
-        self.new_phrase_button.clicked.connect(self._on_new_phrase_clicked)
-        conclusion_layout.addWidget(self.new_phrase_button)
-
-        # Intégrer dans le layout principal
-        self.main_layout.addLayout(conclusion_layout)
-
-        # Appliquer l’état initial
-        self._on_include_conclusion_changed(
-            Qt.CheckState.Checked
-            if self.include_conclusion_state
-            else Qt.CheckState.Unchecked
-        )
-
-    def _on_include_conclusion_changed(self, state: Qt.CheckState):
-        # Sauvegarder l’état de la checkbox dans parlia_data
-        is_checked = (
-            state == Qt.CheckState.Checked
-            or getattr(state, "value", state) == Qt.CheckState.Checked.value
-        )
-        set_include_conclusion(is_checked)
-
-        # Appliquer l’état visuel des champs associés
-        self.current_phrase_display.setEnabled(is_checked)
-        self.new_phrase_button.setEnabled(is_checked)
-        self.custom_phrase_input.setEnabled(is_checked)
-
-        # ✅ On désactive ou réactive les labels également
-        self.current_label.setEnabled(is_checked)
-        self.new_phrase_label.setEnabled(is_checked)
-
-        if is_checked:
-            conclusion_text = get_conclusion_text()
-            if conclusion_text:
-                self.current_phrase_display.setText(conclusion_text)
-            else:
-                self.current_phrase_display.setText(
-                    ParliaStrings.Settings.NO_CURRENT_CONCLUSION
-                )
-        else:
-            self.current_phrase_display.setText(
-                ParliaStrings.Settings.NO_CURRENT_CONCLUSION
-            )
-
-    def _on_new_phrase_clicked(self):
-        logger.info("New phrase button clicked")
-        self._save_custom_phrase()  # Appeler la méthode de sauvegarde
-
-    def _save_custom_phrase(self):
-        """
-        Sauvegarder la phrase personnalisée lorsque l'utilisateur clique sur le bouton "Nouvelle phrase".
-        """
-        custom_phrase = self.custom_phrase_input.text()
-
-        # Sauvegarder le texte via set_conclusion_text
-        set_conclusion_text(custom_phrase)
-
-        # Mettre à jour l'affichage dans current_phrase_display
-        self.current_phrase_display.setText(custom_phrase)
-
-        # Optionnel : Remplacer la valeur dans custom_phrase_input par ""
-        self.custom_phrase_input.clear()
-
-    def _select_model_folder(self):
-        """
-        Méthode pour gérer la sélection du dossier contenant les modèles.
-        """
-        folder = QFileDialog.getExistingDirectory(
-            self, ParliaStrings.Settings.CHOOSE_FOLDER
-        )
-        if folder:
-            self.current_folder = folder
-
-            # Sauvegarder le dossier sélectionné dans parlia_data
-            set_model_folder_path(folder)
-
-            # Mettre à jour l’étiquette pour afficher le chemin choisi
-            self.path_label.setText(
-                ParliaStrings.Settings.CURRENT_FOLDER.format(folder=folder)
-            )
-
-            # Appeler _update_model_list() pour lister les fichiers de modèles du dossier
-            self._update_model_list()
-
     def _update_model_list(self):
         """
-        Met à jour la liste déroulante avec les modèles disponibles dans le dossier sélectionné.
-        - Affiche uniquement les fichiers .pt ou .bin.
-        - Sélectionne automatiquement le modèle sauvegardé si présent.
-        - Sinon, tente de sélectionner "tiny.pt" ou "tiny.bin" si présent.
-        - Sinon, ne sélectionne rien.
+        Met à jour la liste des modèles disponibles via WhisperModelService.
         """
-        if not self.current_folder or not os.path.isdir(self.current_folder):
-            self.path_label.setText(ParliaStrings.Settings.ERROR_INVALID_FOLDER)
-            self.model_combobox.setVisible(False)
-            return
-
-        # Liste des fichiers .pt ou .bin
-        self.model_list = [
-            f for f in os.listdir(self.current_folder) if f.endswith((".pt", ".bin"))
-        ]
-
+        self.model_list = self.whisper_model_service.listAvailableModels()
         if self.model_list:
-            self.model_combobox.clear()
-            self.model_combobox.addItem(
-                ParliaStrings.Settings.NO_MODEL_SELECTED, userData=None
-            )  # Valeur neutre
-            self.model_combobox.addItems(self.model_list)
-            self.model_combobox.setVisible(True)
-
-            # Sélection modèle sauvegardé ou fallback tiny
-            if self.selected_model_name and self.selected_model_name in self.model_list:
-                self.model_combobox.setCurrentText(self.selected_model_name)
-            elif "tiny.pt" in self.model_list:
-                self.model_combobox.setCurrentText("tiny.pt")
-            elif "tiny.bin" in self.model_list:
-                self.model_combobox.setCurrentText("tiny.bin")
-            else:
-                # Aucun modèle par défaut trouvé, ne rien sélectionner
-                pass
+            self._populate_model_combobox()
         else:
-            self.model_combobox.setVisible(False)
-            self.path_label.setText(ParliaStrings.Settings.NO_MODEL_SELECTED)
+            self.whisperModelComboBox.setVisible(False)
+
+    def _populate_model_combobox(self):
+        """
+        Remplit la ComboBox Whisper avec la liste des modèles et sélectionne le modèle actif.
+        """
+        model_list, selected_model = (
+            self.whisper_model_service.getModelListWithSelection()
+        )
+
+        self.whisperModelComboBox.blockSignals(True)
+        self.whisperModelComboBox.clear()
+        self.whisperModelComboBox.addItem(
+            ParliaStrings.Settings.NO_MODEL_SELECTED, userData=None
+        )
+        self.whisperModelComboBox.addItems(model_list)
+        self.whisperModelComboBox.setVisible(True)
+
+        if selected_model in model_list:
+            index = self.whisperModelComboBox.findText(selected_model)
+            if index != -1:
+                self.whisperModelComboBox.setCurrentIndex(index)
+
+        self.whisperModelComboBox.blockSignals(False)
+
+    def _updateWhisperStatus(self):
+        """
+        Met à jour le statut Whisper en fonction de l'état du modèle chargé.
+        """
+        try:
+            text, status_type = self.whisper_model_service.getStatus()
+            self._set_status(self.whisperStatusValue, text, status_type)
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour du statut Whisper : {e}")
+            self._set_status(self.whisperStatusValue, "Erreur", "error")
 
     def _on_model_selected(self, model_name):
         """
         Gère la sélection d’un modèle dans la liste déroulante.
-        - Si "Aucun modèle sélectionné" : décharge le modèle en cours.
-        - Sinon : charge le modèle choisi.
-        Met à jour l'affichage et les boutons d’enregistrement.
         """
-        if model_name == ParliaStrings.Settings.NO_MODEL_SELECTED:
-            logger.info(
-                "[INFO] Aucun modèle sélectionné. Déchargement du modèle en cours."
-            )
-            unload_model()
-            no_model_name = ParliaStrings.Settings.NO_MODEL_SELECTED
-            set_model_name(no_model_name)
+        self.whisper_model_service.selectModel(
+            model_name, callback=self._afterModelSelected
+        )
 
-            if self.update_record_callback:
-                self.update_record_callback()
-
-            return
-
-        if model_name:
-            logger.info(f"Modèle sélectionné _on_model_selected : {model_name}")
-            set_model_name(model_name)
-
-            whisper_service.load_model_async(
-                model_name, on_finished=self.update_record_callback
-            )
-
-            if self.update_record_callback:
-                self.update_record_callback()
-
-    def set_conclusion_text(self, custom_phrase: str):
+    def _afterModelSelected(self):
         """
-        Sauvegarde la phrase de conclusion personnalisée dans les données utilisateur (fichier parlia.json).
-        :param custom_phrase: La phrase de conclusion à sauvegarder.
+        Callback après la sélection ou le chargement d’un modèle.
         """
-        if not custom_phrase.strip():
-            raise ValueError("La phrase de conclusion ne peut pas être vide.")
-
-        set_conclusion_text(custom_phrase)
-
-        logger.info(f"Phrase de conclusion sauvegardée : {custom_phrase}")
+        text, status_type = self.whisper_model_service.getStatus()
+        self._set_status(self.whisperStatusValue, text, status_type)
+        if self.update_record_callback:
+            self.update_record_callback()
 
     def apply_ui_state(self):
         """
-        Méthode obligatoire pour que ParliaStateManager puisse rafraîchir l'état des composants enregistrés.
-        Ici, on ne fait rien car SettingsPanel n'a pas de logique d'état dynamique.
+        Appliquer l'état de l'interface utilisateur.
         """
-        pass
+        text, status_type = self.ollama_service.get_status()
+        self._set_status(self.ollama_status_value, text, status_type)
+        self.ollama_start_button.setEnabled(status_type != "ready")
+
+    def _start_ollama(self):
+        """
+        Callback pour démarrer ou redémarrer Ollama.
+        """
+        # Mettre le statut sur "Démarrage en cours..." et désactiver le bouton
+        self._set_status(self.ollama_status_value, "Démarrage en cours...", "starting")
+        self.ollama_start_button.setEnabled(False)
+
+        # Tenter de démarrer Ollama
+        success = self.ollama_service.start()
+
+        # Appliquer l'état de l'interface utilisateur après la tentative
+        self.apply_ui_state()
+
+        # Réactiver le bouton si le statut est "Inactif"
+        if not success:
+            self.ollama_start_button.setEnabled(True)
+
+    def _on_code_model_selected(self, model_name):
+        """
+        Gère la sélection d'un modèle pour l'assistant de codage.
+        """
+        logger.info(f"Modèle de l'assistant de codage sélectionné : {model_name}")
+        # Simuler une mise à jour de statut
+        self._set_status(
+            self.code_status_label, f"Modèle actif : {model_name}", status_type="ready"
+        )
