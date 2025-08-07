@@ -48,7 +48,8 @@ from modules.parlia.services.audioService import audio_service
 from modules.parlia.services.parlia_data import get_max_duration, set_max_duration
 from modules.parlia.services.parlia_state_manager import parlia_state
 from modules.parlia.services.whisper_service import whisper_service
-from modules.parlia.ui.dialogs.action_settings_dialog import ActionSettingsDialog
+
+# from modules.parlia.ui.dialogs.action_settings_dialog import ActionSettingsDialog
 from modules.parlia.ui.dialogs.transcription_settings_dialog import (
     TranscriptionSettingsDialog,
 )

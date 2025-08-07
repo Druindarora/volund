@@ -41,38 +41,58 @@ if %errorlevel%==0 (
     echo [CHECK] Aucun VPN détecté. >> %LOGFILE%
 )
 
-:: Vérifie si WSL est disponible
+:: === [WSL] VÉRIFICATION & LANCEMENT OLLAMA ===
+echo --------------------------------------------------
+echo [WSL] Vérification de WSL et du serveur Ollama...
+echo --------------------------------------------------
+
+:: Vérifie si WSL est dispo
 where wsl > nul 2>&1
 if %errorlevel% neq 0 (
+    echo ❌ [ERREUR] WSL non disponible.
     echo ❌ [ERREUR] WSL non disponible. >> %LOGFILE%
-    echo ❌ WSL non détecté sur cette machine.
     goto FIN
 )
 
-:: Vérifie si Ollama tourne via WSL
-echo [WSL] Vérification d'Ollama...
-wsl ps aux | findstr /I "ollama serve" >> %LOGFILE%
+:: Vérifie si Ollama tourne déjà
+wsl ps aux | findstr /I "ollama serve" > nul
 if %errorlevel%==1 (
-    echo [WSL] Ollama non détecté, tentative de lancement...
-    echo Lancement Ollama... >> %LOGFILE%
+    echo [WSL] Ollama non détecté. Lancement...
+    echo [WSL] Ollama non détecté. Lancement... >> %LOGFILE%
+
     wsl -e bash -c "OLLAMA_DEBUG=0 nohup ollama serve > /dev/null 2>&1 &"
-    if %errorlevel% neq 0 (
-        echo ❌ [ERREUR] Échec du lancement d'Ollama. >> %LOGFILE%
-    ) else (
-        echo ✅ [WSL] Ollama lancé. >> %LOGFILE%
-    )
+    timeout /t 2 > nul
 ) else (
-    echo ✅ [WSL] Ollama déjà en cours. >> %LOGFILE%
+    echo ✅ [WSL] Ollama semble déjà actif.
+    echo ✅ [WSL] Ollama semble déjà actif. >> %LOGFILE%
 )
 
-:: Test du endpoint Ollama pour forcer un preload
-echo [WSL] Préchargement modèle codellama...
-wsl -e bash -c "curl -s http://127.0.0.1:11434/api/generate -d '{\"model\": \"codellama:13b-instruct\", \"prompt\": \"ping\", \"stream\": false}' > /dev/null"
+:: Vérifie si le port est ouvert
+echo [WSL] Vérification du port 11434...
+wsl -e bash -c "netstat -an | grep 11434" > nul
 if %errorlevel% neq 0 (
-    echo ⚠️ [WSL] Erreur pendant le preload du modèle. >> %LOGFILE%
+    echo ⚠️ [WSL] Port 11434 non ouvert.
+    echo ⚠️ [WSL] Port 11434 non ouvert. >> %LOGFILE%
 ) else (
-    echo ✅ [WSL] Modèle préchargé. >> %LOGFILE%
+    echo ✅ [WSL] Port 11434 ouvert.
+    echo ✅ [WSL] Port 11434 ouvert. >> %LOGFILE%
 )
+
+:: Ping du modèle pour forcer un preload
+echo [WSL] Préchargement modèle codellama...
+wsl -e bash -c "curl -s -X POST http://127.0.0.1:11434/api/generate -H 'Content-Type: application/json' -d '{\"model\": \"codellama:13b-instruct\", \"prompt\": \"ping\", \"stream\": false}' > /dev/null"
+
+if %errorlevel% neq 0 (
+    echo ❌ [ERREUR] Échec du preload modèle codellama.
+    echo ❌ [ERREUR] Échec du preload modèle codellama. >> %LOGFILE%
+) else (
+    echo ✅ [WSL] Modèle codellama préchargé avec succès.
+    echo ✅ [WSL] Modèle codellama préchargé avec succès. >> %LOGFILE%
+)
+
+echo ✅ [WSL] Vérification complète terminée.
+echo ✅ [WSL] Vérification complète terminée. >> %LOGFILE%
+
 
 :: === [WIN] LANCEMENT VS CODE CLASSIQUE (PAS CURSOR) ===
 echo [WIN] Lancement de VS Code...
@@ -80,16 +100,16 @@ echo [WIN] Lancement de VS Code...
 :: Sauvegarde du répertoire courant
 set "PROJECT_DIR=%cd%"
 
-:: Emplacement typique de VS Code (hors Cursor)
-set "VSCODE_PATH=C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe"
+:: Emplacement typique de Cursor IDE
+set "CURSOR_PATH=C:\Users\%USERNAME%\AppData\Local\Programs\cursor\Cursor.exe"
 
-if exist "%VSCODE_PATH%" (
-    echo ✅ [WIN] VS Code trouvé à %VSCODE_PATH%. >> %LOGFILE%
-    start "" "%VSCODE_PATH%" "%PROJECT_DIR%"
-    echo ✅ [WIN] VS Code lancé. >> %LOGFILE%
+if exist "%CURSOR_PATH%" (
+    echo ✅ [WIN] Cursor trouvé à %CURSOR_PATH%. >> %LOGFILE%
+    start "" "%CURSOR_PATH%" "%PROJECT_DIR%"
+    echo ✅ [WIN] Cursor lancé. >> %LOGFILE%
 ) else (
-    echo ❌ [ERREUR] VS Code non trouvé à l’emplacement attendu. >> %LOGFILE%
-    echo ❌ [INFO] Tu peux corriger le chemin dans le script si besoin.
+    echo ❌ [ERREUR] Cursor non trouvé à l’emplacement attendu. >> %LOGFILE%
+    echo ❌ [INFO] Corrige le chemin si Cursor est ailleurs.
 )
 
 

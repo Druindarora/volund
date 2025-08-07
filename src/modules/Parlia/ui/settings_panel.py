@@ -25,7 +25,6 @@
 import qtawesome as qta
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QPushButton,  # Ajout de QPushButton
@@ -36,6 +35,8 @@ from PySide6.QtWidgets import (
 )
 
 from modules.parlia.i18n.parlia_strings import ParliaStrings
+
+# from modules.parlia.services.code_assistant_service import CodeAssistantService
 from modules.parlia.services.ollama_service import OllamaService
 from modules.parlia.services.whisper_model_service import WhisperModelService
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
@@ -60,7 +61,7 @@ class SettingsPanel(QWidget):
         load_qss_for(self)
 
         # Appeler les méthodes pour initialiser la liste des modèles et la sélection
-        self._update_model_list()
+        # self._update_model_list()
         self.whisper_model_service.initializeModel(callback=self._afterModelSelected)
         self.apply_ui_state()  # Appliquer l'état initial de l'interface utilisateur
 
@@ -160,12 +161,12 @@ class SettingsPanel(QWidget):
         whisper_layout.addLayout(status_layout)
 
         # ComboBox pour les modèles Whisper
-        self.whisperModelComboBox = QComboBox(self)
-        self.whisperModelComboBox.setObjectName("WhisperModelComboBox")
-        self.whisperModelComboBox.setVisible(True)
-        self.whisperModelComboBox.setFixedSize(220, 32)
-        self.whisperModelComboBox.currentTextChanged.connect(self._on_model_selected)
-        whisper_layout.addWidget(self.whisperModelComboBox)
+        # self.whisperModelComboBox = QComboBox(self)
+        # self.whisperModelComboBox.setObjectName("WhisperModelComboBox")
+        # self.whisperModelComboBox.setVisible(True)
+        # self.whisperModelComboBox.setFixedSize(220, 32)
+        # self.whisperModelComboBox.currentTextChanged.connect(self._on_model_selected)
+        # whisper_layout.addWidget(self.whisperModelComboBox)
 
         whisper_layout.setSpacing(10)
         whisper_layout.setAlignment(
@@ -232,22 +233,37 @@ class SettingsPanel(QWidget):
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         code_layout.addWidget(title)
 
-        # Label de statut
-        self.code_status_label = QLabel("Statut : ✅ OK")
-        self._set_status(self.code_status_label, "Statut : OK", status_type="ready")
-        # Appliquer des dimensions fixes et des identifiants
-        self.code_status_label.setFixedHeight(24)
-        self.code_status_label.setObjectName("statusLabel")
-        code_layout.addWidget(self.code_status_label)
+        # Label de statut dynamique
+        static_label = QLabel("Statut :")
+        static_label.setStyleSheet("color: white; font-weight: bold;")
+        static_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
-        # ComboBox pour les modèles
-        self.code_model_combobox = QComboBox(self)
-        self.code_model_combobox.addItems(["Mistral 7B", "Mixtral 8x7B", "CodeLlama"])
-        self.code_model_combobox.setFixedSize(220, 32)
-        self.code_model_combobox.currentTextChanged.connect(
-            self._on_code_model_selected
-        )
-        code_layout.addWidget(self.code_model_combobox)
+        self.code_status_value = QLabel("Non chargé")
+        self.code_status_value.setStyleSheet("color: gray; font-weight: bold;")
+        self.code_status_value.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+
+        status_layout = QHBoxLayout()
+        status_layout.addWidget(static_label)
+        status_layout.addWidget(self.code_status_value)
+        status_layout.addStretch()
+        code_layout.addLayout(status_layout)
+
+        # Chargement des modèles disponibles via CodeAssistantService
+        # self.codeAssistantService = CodeAssistantService()
+        # available_models = self.codeAssistantService.getAvailableModels()
+
+        # # ComboBox pour les modèles
+        # self.code_model_combobox = QComboBox(self)
+        # if available_models:
+        #     self.code_model_combobox.addItems(available_models)
+        # else:
+        #     self.code_model_combobox.addItem("Aucun modèle disponible")
+
+        # self.code_model_combobox.setFixedSize(220, 32)
+        # self.code_model_combobox.currentTextChanged.connect(
+        #     self._on_code_model_selected
+        # )
+        # code_layout.addWidget(self.code_model_combobox)
 
         code_layout.setSpacing(10)
         code_layout.setAlignment(
@@ -255,6 +271,7 @@ class SettingsPanel(QWidget):
         )
 
         return code_widget
+
 
     def _add_header(self):
         """
@@ -285,41 +302,44 @@ class SettingsPanel(QWidget):
         """
         Ouvre la fenêtre PreferencesDialog en modal.
         """
+        # preferences_dialog = PreferencesDialog(self)
+        # preferences_dialog.exec_()
         preferences_dialog = PreferencesDialog(self)
+        preferences_dialog.set_model_selected_callback(self._afterModelSelected)
         preferences_dialog.exec_()
 
-    def _update_model_list(self):
-        """
-        Met à jour la liste des modèles disponibles via WhisperModelService.
-        """
-        self.model_list = self.whisper_model_service.listAvailableModels()
-        if self.model_list:
-            self._populate_model_combobox()
-        else:
-            self.whisperModelComboBox.setVisible(False)
+    # def _update_model_list(self):
+    #     """
+    #     Met à jour la liste des modèles disponibles via WhisperModelService.
+    #     """
+    #     self.model_list = self.whisper_model_service.listAvailableModels()
+    #     if self.model_list:
+    #         self._populate_model_combobox()
+    #     else:
+    #         self.whisperModelComboBox.setVisible(False)
 
-    def _populate_model_combobox(self):
-        """
-        Remplit la ComboBox Whisper avec la liste des modèles et sélectionne le modèle actif.
-        """
-        model_list, selected_model = (
-            self.whisper_model_service.getModelListWithSelection()
-        )
+    # def _populate_model_combobox(self):
+    #     """
+    #     Remplit la ComboBox Whisper avec la liste des modèles et sélectionne le modèle actif.
+    #     """
+    #     model_list, selected_model = (
+    #         self.whisper_model_service.getModelListWithSelection()
+    #     )
 
-        self.whisperModelComboBox.blockSignals(True)
-        self.whisperModelComboBox.clear()
-        self.whisperModelComboBox.addItem(
-            ParliaStrings.Settings.NO_MODEL_SELECTED, userData=None
-        )
-        self.whisperModelComboBox.addItems(model_list)
-        self.whisperModelComboBox.setVisible(True)
+    #     self.whisperModelComboBox.blockSignals(True)
+    #     self.whisperModelComboBox.clear()
+    #     self.whisperModelComboBox.addItem(
+    #         ParliaStrings.Settings.NO_MODEL_SELECTED, userData=None
+    #     )
+    #     self.whisperModelComboBox.addItems(model_list)
+    #     self.whisperModelComboBox.setVisible(True)
 
-        if selected_model in model_list:
-            index = self.whisperModelComboBox.findText(selected_model)
-            if index != -1:
-                self.whisperModelComboBox.setCurrentIndex(index)
+    #     if selected_model in model_list:
+    #         index = self.whisperModelComboBox.findText(selected_model)
+    #         if index != -1:
+    #             self.whisperModelComboBox.setCurrentIndex(index)
 
-        self.whisperModelComboBox.blockSignals(False)
+    #     self.whisperModelComboBox.blockSignals(False)
 
     def _updateWhisperStatus(self):
         """
@@ -327,25 +347,33 @@ class SettingsPanel(QWidget):
         """
         try:
             text, status_type = self.whisper_model_service.getStatus()
+            logger.debug(f"[DEBUG] Statut actuel = {text} / {status_type}")
+            if status_type == "ready":
+                selected = self.whisper_model_service.getSelectedModel()
+                logger.debug(f"[DEBUG] Modèle sélectionné = {selected}")
+                if selected:
+                    text += f" ({selected})"
             self._set_status(self.whisperStatusValue, text, status_type)
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour du statut Whisper : {e}")
             self._set_status(self.whisperStatusValue, "Erreur", "error")
 
-    def _on_model_selected(self, model_name):
-        """
-        Gère la sélection d’un modèle dans la liste déroulante.
-        """
-        self.whisper_model_service.selectModel(
-            model_name, callback=self._afterModelSelected
-        )
+    # def _on_model_selected(self, model_name):
+    #     """
+    #     Gère la sélection d’un modèle dans la liste déroulante.
+    #     """
+        # self.whisper_model_service.selectModel(
+        #     model_name, callback=self._afterModelSelected
+        # )
 
     def _afterModelSelected(self):
         """
         Callback après la sélection ou le chargement d’un modèle.
         """
-        text, status_type = self.whisper_model_service.getStatus()
-        self._set_status(self.whisperStatusValue, text, status_type)
+        # text, status_type = self.whisper_model_service.getStatus()
+        # self._set_status(self.whisperStatusValue, text, status_type)
+        self._updateWhisperStatus()
+
         if self.update_record_callback:
             self.update_record_callback()
 
@@ -356,6 +384,10 @@ class SettingsPanel(QWidget):
         text, status_type = self.ollama_service.get_status()
         self._set_status(self.ollama_status_value, text, status_type)
         self.ollama_start_button.setEnabled(status_type != "ready")
+
+        # Ajout futur
+        # text, status_type = self.code_assistant_service.get_status()
+        # self._set_status(self.code_status_value, text, status_type)
 
     def _start_ollama(self):
         """
@@ -382,5 +414,6 @@ class SettingsPanel(QWidget):
         logger.info(f"Modèle de l'assistant de codage sélectionné : {model_name}")
         # Simuler une mise à jour de statut
         self._set_status(
-            self.code_status_label, f"Modèle actif : {model_name}", status_type="ready"
+            self.code_status_value, f"{model_name}", status_type="ready"
         )
+
