@@ -37,7 +37,7 @@ def get_logger(module_name: str) -> logging.Logger:
 
     # Handler console coloré
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
     console_formatter = ColoredFormatter(
         "%(levelname)s %(asctime)s - %(message)s", datefmt="%H:%M:%S"
     )

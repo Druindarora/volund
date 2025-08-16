@@ -37,6 +37,8 @@ from PySide6.QtWidgets import (
 from modules.parlia.i18n.parlia_strings import ParliaStrings
 
 # from modules.parlia.services.code_assistant_service import CodeAssistantService
+from modules.parlia.services import parlia_data
+from modules.parlia.services.code_assistant_service import CodeAssistantService
 from modules.parlia.services.ollama_service import OllamaService
 from modules.parlia.services.whisper_model_service import WhisperModelService
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
@@ -61,9 +63,8 @@ class SettingsPanel(QWidget):
         load_qss_for(self)
 
         # Appeler les méthodes pour initialiser la liste des modèles et la sélection
-        # self._update_model_list()
         self.whisper_model_service.initializeModel(callback=self._afterModelSelected)
-        self.apply_ui_state()  # Appliquer l'état initial de l'interface utilisateur
+        self.apply_ui_state()
 
     def _load_user_preferences(self):
         """
@@ -122,7 +123,7 @@ class SettingsPanel(QWidget):
             "error": "red",
             "warning": "orange",
             "neutral": "gray",
-            "starting": "orange",  # Ajout de la couleur pour le statut "starting"
+            "starting": "orange",
         }
         color = colors.get(status_type, "white")
         value_label.setText(text)
@@ -157,16 +158,8 @@ class SettingsPanel(QWidget):
 
         status_layout.addWidget(static_label)
         status_layout.addWidget(self.whisperStatusValue)
-        status_layout.addStretch()  # pousse l'espace libre après les labels
+        status_layout.addStretch()
         whisper_layout.addLayout(status_layout)
-
-        # ComboBox pour les modèles Whisper
-        # self.whisperModelComboBox = QComboBox(self)
-        # self.whisperModelComboBox.setObjectName("WhisperModelComboBox")
-        # self.whisperModelComboBox.setVisible(True)
-        # self.whisperModelComboBox.setFixedSize(220, 32)
-        # self.whisperModelComboBox.currentTextChanged.connect(self._on_model_selected)
-        # whisper_layout.addWidget(self.whisperModelComboBox)
 
         whisper_layout.setSpacing(10)
         whisper_layout.setAlignment(
@@ -204,14 +197,8 @@ class SettingsPanel(QWidget):
 
         status_layout.addWidget(static_label)
         status_layout.addWidget(self.ollama_status_value)
-        status_layout.addStretch()  # pousse l'espace libre après les labels
+        status_layout.addStretch()
         ollama_layout.addLayout(status_layout)
-
-        # Bouton pour démarrer Ollama
-        self.ollama_start_button = QPushButton("Démarrer Ollama")
-        self.ollama_start_button.setFixedSize(220, 32)
-        self.ollama_start_button.clicked.connect(self._start_ollama)
-        ollama_layout.addWidget(self.ollama_start_button)
 
         ollama_layout.setSpacing(10)
         ollama_layout.setAlignment(
@@ -247,23 +234,6 @@ class SettingsPanel(QWidget):
         status_layout.addWidget(self.code_status_value)
         status_layout.addStretch()
         code_layout.addLayout(status_layout)
-
-        # Chargement des modèles disponibles via CodeAssistantService
-        # self.codeAssistantService = CodeAssistantService()
-        # available_models = self.codeAssistantService.getAvailableModels()
-
-        # # ComboBox pour les modèles
-        # self.code_model_combobox = QComboBox(self)
-        # if available_models:
-        #     self.code_model_combobox.addItems(available_models)
-        # else:
-        #     self.code_model_combobox.addItem("Aucun modèle disponible")
-
-        # self.code_model_combobox.setFixedSize(220, 32)
-        # self.code_model_combobox.currentTextChanged.connect(
-        #     self._on_code_model_selected
-        # )
-        # code_layout.addWidget(self.code_model_combobox)
 
         code_layout.setSpacing(10)
         code_layout.setAlignment(
@@ -302,44 +272,9 @@ class SettingsPanel(QWidget):
         """
         Ouvre la fenêtre PreferencesDialog en modal.
         """
-        # preferences_dialog = PreferencesDialog(self)
-        # preferences_dialog.exec_()
         preferences_dialog = PreferencesDialog(self)
         preferences_dialog.set_model_selected_callback(self._afterModelSelected)
         preferences_dialog.exec_()
-
-    # def _update_model_list(self):
-    #     """
-    #     Met à jour la liste des modèles disponibles via WhisperModelService.
-    #     """
-    #     self.model_list = self.whisper_model_service.listAvailableModels()
-    #     if self.model_list:
-    #         self._populate_model_combobox()
-    #     else:
-    #         self.whisperModelComboBox.setVisible(False)
-
-    # def _populate_model_combobox(self):
-    #     """
-    #     Remplit la ComboBox Whisper avec la liste des modèles et sélectionne le modèle actif.
-    #     """
-    #     model_list, selected_model = (
-    #         self.whisper_model_service.getModelListWithSelection()
-    #     )
-
-    #     self.whisperModelComboBox.blockSignals(True)
-    #     self.whisperModelComboBox.clear()
-    #     self.whisperModelComboBox.addItem(
-    #         ParliaStrings.Settings.NO_MODEL_SELECTED, userData=None
-    #     )
-    #     self.whisperModelComboBox.addItems(model_list)
-    #     self.whisperModelComboBox.setVisible(True)
-
-    #     if selected_model in model_list:
-    #         index = self.whisperModelComboBox.findText(selected_model)
-    #         if index != -1:
-    #             self.whisperModelComboBox.setCurrentIndex(index)
-
-    #     self.whisperModelComboBox.blockSignals(False)
 
     def _updateWhisperStatus(self):
         """
@@ -358,22 +293,12 @@ class SettingsPanel(QWidget):
             logger.error(f"Erreur lors de la mise à jour du statut Whisper : {e}")
             self._set_status(self.whisperStatusValue, "Erreur", "error")
 
-    # def _on_model_selected(self, model_name):
-    #     """
-    #     Gère la sélection d’un modèle dans la liste déroulante.
-    #     """
-        # self.whisper_model_service.selectModel(
-        #     model_name, callback=self._afterModelSelected
-        # )
-
     def _afterModelSelected(self):
         """
         Callback après la sélection ou le chargement d’un modèle.
         """
-        # text, status_type = self.whisper_model_service.getStatus()
-        # self._set_status(self.whisperStatusValue, text, status_type)
         self._updateWhisperStatus()
-
+        self._updateCodeStatus()
         if self.update_record_callback:
             self.update_record_callback()
 
@@ -383,29 +308,9 @@ class SettingsPanel(QWidget):
         """
         text, status_type = self.ollama_service.get_status()
         self._set_status(self.ollama_status_value, text, status_type)
-        self.ollama_start_button.setEnabled(status_type != "ready")
-
-        # Ajout futur
-        # text, status_type = self.code_assistant_service.get_status()
-        # self._set_status(self.code_status_value, text, status_type)
-
-    def _start_ollama(self):
-        """
-        Callback pour démarrer ou redémarrer Ollama.
-        """
-        # Mettre le statut sur "Démarrage en cours..." et désactiver le bouton
-        self._set_status(self.ollama_status_value, "Démarrage en cours...", "starting")
-        self.ollama_start_button.setEnabled(False)
-
-        # Tenter de démarrer Ollama
-        success = self.ollama_service.start()
-
-        # Appliquer l'état de l'interface utilisateur après la tentative
-        self.apply_ui_state()
-
-        # Réactiver le bouton si le statut est "Inactif"
-        if not success:
-            self.ollama_start_button.setEnabled(True)
+        self.code_assistant_service = CodeAssistantService()
+        text, status_type = self.code_assistant_service.getStatus()
+        self._set_status(self.code_status_value, text, status_type)
 
     def _on_code_model_selected(self, model_name):
         """
@@ -416,4 +321,20 @@ class SettingsPanel(QWidget):
         self._set_status(
             self.code_status_value, f"{model_name}", status_type="ready"
         )
+
+    def _updateCodeStatus(self):
+        """
+        Met à jour le statut de l'assistant de codage en fonction du modèle chargé.
+        """
+        try:
+            text, status_type = self.code_assistant_service.getStatus()
+            if status_type == "ready":
+                selected = parlia_data.get_prompt("selected_code_model")
+                if selected:
+                    text += f" ({selected})"
+            self._set_status(self.code_status_value, text, status_type)
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour du statut de l'assistant de codage : {e}")
+            self._set_status(self.code_status_value, "Erreur", "error")
+
 

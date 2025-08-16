@@ -20,6 +20,7 @@
 # Tu peux t’appuyer dessus tel quel pour construire la suite (FilePanel, etc.).
 
 
+import time
 from typing import Optional
 
 from PySide6.QtCore import Qt
@@ -71,6 +72,7 @@ class HomePanel(QWidget):
         )
 
     def _build_ui(self):
+        start = time.perf_counter()
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
 
         # Sidebar gauche : FileTreePanel
@@ -84,13 +86,22 @@ class HomePanel(QWidget):
         layout.setContentsMargins(30, 10, 30, 10)
         layout.setSpacing(10)
 
+
+        t0 = time.perf_counter()
         header_row = self._create_title_and_tracker_row()
+        logger.debug(f"[PERF] build title/tracker : {time.perf_counter() - t0:.3f}s")
         separator1 = self._create_separator()
+        t0 = time.perf_counter()
         transcription_block = self._create_transcription_block()
+        logger.debug(f"[PERF] build transcription : {time.perf_counter() - t0:.3f}s")
+        t0 = time.perf_counter()
         settings_block = self._create_settings_block()
+        logger.debug(f"[PERF] build settings : {time.perf_counter() - t0:.3f}s")
         separator2 = self._create_separator()
         separator3 = self._create_separator()
+        t0 = time.perf_counter()
         action_block = self._create_action_block()
+        logger.debug(f"[PERF] build action : {time.perf_counter() - t0:.3f}s")
 
         layout.addWidget(header_row)
         layout.addWidget(separator1)
@@ -108,6 +119,7 @@ class HomePanel(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(splitter)
         self.setLayout(main_layout)
+        logger.debug(f"[PERF] Total build UI : {time.perf_counter() - start:.3f}s")
 
     def _create_title_and_tracker_row(self) -> QWidget:
         """

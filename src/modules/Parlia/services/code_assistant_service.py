@@ -1,91 +1,85 @@
 import subprocess
 from typing import Callable, Optional
 
+from src.core.logger_manager import get_logger
+
+logger = get_logger("CodeAssistantService")
+
 
 class CodeAssistantService:
     def __init__(self):
         self.currentModel = None
         self.availableModels = []
+        logger.debug("Initialisation de CodeAssistantService")
         self.refreshModels()
 
     def _runCommand(self, command: str) -> str:
         """Exécute une commande bash via WSL et renvoie la sortie standard."""
         try:
+            logger.debug(f"Exécution commande : {command}")
             result = subprocess.run(
                 ["wsl", "-e", "bash", "-c", command],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=10
             )
-            return result.stdout.strip()
+            return (result.stdout or "").strip()
         except Exception as e:
-            print(f"[CodeAssistantService] Erreur commande : {e}")
+            logger.error(f"Erreur commande : {e}")
             return ""
 
     def refreshModels(self):
         """Met à jour la liste des modèles disponibles via 'ollama list'."""
+        logger.debug("Actualisation de la liste des modèles disponibles")
         output = self._runCommand("ollama list")
         models = []
-        for line in output.splitlines()[1:]:  # Ignore l'entête
+        for line in output.splitlines()[1:]:
             parts = line.strip().split()
             if parts:
                 models.append(parts[0])
         self.availableModels = models
+        logger.debug(f"Modèles détectés : {models}")
 
     def getAvailableModels(self) -> list[str]:
-        """Retourne la liste des modèles disponibles."""
         return self.availableModels
 
     def getCurrentModel(self) -> str | None:
-        """Retourne le nom du modèle chargé actuellement via 'ollama ps'."""
         output = self._runCommand("ollama ps")
-        for line in output.splitlines()[1:]:  # Ignore l'entête
+        for line in output.splitlines()[1:]:
             parts = line.strip().split()
             if parts:
+                logger.debug(f"Modèle chargé détecté : {parts[0]}")
                 return parts[0]
         return None
 
     def isModelLoaded(self) -> bool:
-        """Indique si un modèle est actuellement chargé."""
         return self.getCurrentModel() is not None
 
-    def getStatus(self) -> str:
-        """Retourne un label de statut : 'Non chargé' ou 'Chargé : <modèle>'."""
+    def getStatus(self) -> tuple[str, str]:
         model = self.getCurrentModel()
         if model:
-            return f"Chargé : {model}"
-        return "Non chargé"
+            return (f"Chargé : {model}", "ready")
+        return ("Non chargé", "neutral")
 
     def setModel(self, modelName: str) -> bool:
-        """Charge un modèle s'il n'est pas déjà actif. Utilise un ping silencieux."""
         current = self.getCurrentModel()
         if current == modelName:
-            return True  # Déjà actif
-
+            return True
         if modelName not in self.availableModels:
-            print(f"[CodeAssistantService] Modèle inconnu : {modelName}")
+            logger.warning(f"Modèle inconnu : {modelName}")
             return False
 
-        # Tentative de chargement via un prompt minimal
-        payload = (
-            f'{{"model": "{modelName}", "prompt": "ping", "stream": false}}'
-        )
+        payload = f'{{"model": "{modelName}", "prompt": "ping", "stream": false}}'
         command = f"curl -s http://127.0.0.1:11434/api/generate -d '{payload}'"
         output = self._runCommand(command)
         return bool(output)
 
     def selectModel(self, modelName: str, on_finished: Optional[Callable[[bool], None]] = None):
-        """
-        Charge le modèle de codage sélectionné et appelle un callback avec True/False selon le succès.
-        """
+        logger.info(f"Sélection du modèle de code : {modelName}")
         success = self.setModel(modelName)
         if on_finished:
             on_finished(success)
 
-
     def unloadModel(self) -> bool:
-        """Tentative d'arrêt du modèle actif (non supporté directement par Ollama)."""
-        # Ollama ne propose pas d'arrêt explicite d'un modèle
-        # Mais on peut contourner en tuant le processus si besoin, ou ignorer
-        # À implémenter plus tard si vraiment nécessaire
         return False

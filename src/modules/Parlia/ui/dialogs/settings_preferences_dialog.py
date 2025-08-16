@@ -11,7 +11,9 @@ from PySide6.QtWidgets import (
 from qtpy.QtWidgets import QComboBox
 
 from modules.parlia.i18n.parlia_strings import ParliaStrings
+from modules.parlia.services import parlia_data
 from modules.parlia.services.code_assistant_service import CodeAssistantService
+from modules.parlia.services.ollama_service import OllamaService
 from modules.parlia.services.parlia_data import (
     get_model_folder_path,
     set_model_folder_path,
@@ -32,7 +34,10 @@ class PreferencesDialog(QDialog):
 
         self.build_whisper_section()
         self.build_code_assistant_section()
+        self.build_ollama_section()
         self.build_button_box()
+        selected_model = parlia_data.get_prompt("selected_code_model")
+        self._populate_code_model_combobox(selected_model)
 
     def build_whisper_section(self):
         whisper_title = QLabel("🎤 Modèle Whisper")
@@ -68,21 +73,9 @@ class PreferencesDialog(QDialog):
         code_title.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.mainLayout.addWidget(code_title)
 
-        # code_layout = QHBoxLayout()
-        # self.select_code_button = QPushButton("Choisir dossier", self)
-        # self.select_code_button.clicked.connect(self._select_code_folder)
-        # code_layout.addWidget(self.select_code_button)
-
-        # self.codePathLabel = QLabel("(aucun dossier sélectionné)", self)
-        # code_layout.addWidget(self.codePathLabel)
-
-        # self.mainLayout.addLayout(code_layout)
-
         self.code_model_combobox = QComboBox(self)
         self.code_model_combobox.setFixedSize(220, 32)
-        # self.code_model_combobox.addItem("Aucun modèle disponible")  # provisoire
         self.codeAssistantService = CodeAssistantService()
-        self._update_code_model_list()
 
         self.code_model_combobox.currentTextChanged.connect(self._on_code_model_selected)
         self.mainLayout.addWidget(self.code_model_combobox)
@@ -93,25 +86,46 @@ class PreferencesDialog(QDialog):
         separator.setFrameShadow(QFrame.Shadow.Sunken)
         self.mainLayout.addWidget(separator)
 
+    def build_ollama_section(self):
+        self.ollamaService = OllamaService()
+
+        ollama_button = QPushButton("Démarrer Ollama", self)
+        ollama_button.setFixedSize(220, 32)
+        ollama_button.clicked.connect(self._start_ollama)
+        self.mainLayout.addWidget(ollama_button)
+
+    def _start_ollama(self):
+        """
+        Lance le serveur Ollama.
+        """
+        text, status = self.ollamaService.get_status()
+        if status != "ready":
+            self.ollamaService.start()
+
+
     def _update_code_model_list(self):
         model_list = self.codeAssistantService.getAvailableModels()
         self._populate_code_model_combobox(model_list)
 
-    def _populate_code_model_combobox(self, model_list):
+    def _populate_code_model_combobox(self, selected_model=None):
         self.code_model_combobox.blockSignals(True)
         self.code_model_combobox.clear()
 
         self.code_model_combobox.addItem("Aucun modèle sélectionné")
 
-        if model_list:
-            self.code_model_combobox.addItems(model_list)
+        models = self.codeAssistantService.getAvailableModels()
+        if models:
+            self.code_model_combobox.addItems(models)
             self.code_model_combobox.setEnabled(True)
         else:
             self.code_model_combobox.setEnabled(False)
 
-        self.code_model_combobox.setCurrentIndex(0)
-        self.code_model_combobox.blockSignals(False)
+        if selected_model:
+            index = self.code_model_combobox.findText(selected_model)
+            if index != -1:
+                self.code_model_combobox.setCurrentIndex(index)
 
+        self.code_model_combobox.blockSignals(False)
 
     def build_button_box(self):
         button_box = QDialogButtonBox(
@@ -140,13 +154,6 @@ class PreferencesDialog(QDialog):
         else:
             self.whisperPathLabel.setText(ParliaStrings.Settings.NO_MODEL_SELECTED)
 
-    # def _select_code_folder(self):
-    #     folder = QFileDialog.getExistingDirectory(
-    #         self, "Choisir un dossier pour l'assistant de codage"
-    #     )
-    #     if folder:
-    #         self.codePathLabel.setText(folder)
-
     def _on_whisper_model_selected(self, model_name: str):
         if model_name and model_name != "Aucun modèle disponible":
             WhisperModelService().selectModel(model_name, callback=self._notify_model_selected)
@@ -159,9 +166,12 @@ class PreferencesDialog(QDialog):
             self._model_selected_callback()
 
     def _on_code_model_selected(self, model_name: str):
-        if model_name and model_name != "Aucun modèle disponible":
-            self.codeAssistantService = CodeAssistantService()
-            self.codeAssistantService.selectModel(model_name)
+        if model_name and model_name != "Aucun modèle sélectionné":
+            parlia_data.set_prompt("selected_code_model", model_name)
+            self.codeAssistantService.selectModel(
+                model_name,
+                on_finished=lambda success: self._notify_model_selected()
+            )
 
     def _update_model_list(self):
         model_list, selected_model = WhisperModelService().getModelListWithSelection()
