@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+      "*.qss": "css"
+    },
+    "emmet.includeLanguages": {
+      "qss": "css"
+    },
+    "css.validate": false
+  }
+  

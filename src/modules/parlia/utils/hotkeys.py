@@ -1,48 +1,57 @@
 """
-| Action                                                                                | Pourquoi                                          |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| 🔁 Renommer `start_hotkey_listener` → `register_hotkey_listener()`                    | Si tu ajoutes un mapping multiple                 |
-| 🔁 Centraliser le mapping dans un `hotkey_registry: dict[hotkey_str, callback]`       | Pour que d'autres actions puissent être branchées |
-| ➕ Ajouter des raccourcis : `Ctrl+Shift+T` → transcrire, `Ctrl+Shift+C` → copier, etc. | Tu as la base pour en faire un système complet    |
-
+Neutralisation du hotkey global sous Linux (Wayland/X11) pour éviter le crash.
+Conserve le comportement d’origine sur Windows/macOS.
 """
 
+import platform
 from threading import Thread
 
-import keyboard
 from PySide6.QtCore import QMetaObject, Qt
+from src.core.logger_manager import get_logger
+
+logger = get_logger("Hotkeys")
+_is_linux = platform.system() == "Linux"
 
 
 def start_hotkey_listener(get_main_window, get_transcription_panel):
     """
     Lance un thread qui écoute la combinaison CTRL + SHIFT + F12 globalement.
-    Il déclenche toggle_recording() sur le transcription_panel **seulement si**
-    - Parlia est lancé
-    - Le modèle est prêt
+    Sous Linux : neutralisé (pas de hook global) pour éviter l'ImportError/root.
     """
 
+    if _is_linux:
+        # Désactive proprement sous Linux/Wayland (pas de hook global possible sans root)
+        logger.warning("[Hotkeys] Global hotkey désactivé sous Linux. Utilise les boutons de l'UI.")
+        return
+
     def listen():
+        try:
+            import keyboard  # import paresseux pour éviter l'import sous Linux
+        except Exception as e:
+            logger.error(f"[Hotkeys] Impossible d'activer le hotkey global: {e}")
+            return
+
         while True:
             keyboard.wait("ctrl+shift+f12")
-            print("[HOTKEY] Déclenchement clavier capté")
+            logger.info("[HOTKEY] Déclenchement clavier capté")
 
             main_window = get_main_window()
             panel = get_transcription_panel()
 
             if not main_window or not panel:
-                print("[HOTKEY] Fenêtre ou panneau non dispo.")
+                logger.info("[HOTKEY] Fenêtre ou panneau non dispo.")
                 continue
 
             if not getattr(panel, "model_ready", False):
-                print("[HOTKEY] Modèle non prêt → action ignorée.")
+                logger.info("[HOTKEY] Modèle non prêt → action ignorée.")
                 continue
 
-            print("[HOTKEY] Réactivation de la fenêtre principale")
+            logger.info("[HOTKEY] Réactivation de la fenêtre principale")
             main_window.showNormal()
             main_window.raise_()
             main_window.activateWindow()
 
-            print("[HOTKEY] toggle_recording()")
+            logger.info("[HOTKEY] toggle_recording()")
             # fmt: off
             QMetaObject.invokeMethod(panel, "toggle_recording", Qt.ConnectionType.QueuedConnection)  # type: ignore[reportArgumentType]
             # fmt: on
