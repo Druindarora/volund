@@ -23,7 +23,8 @@ from core.user_data_manager import user_data
 MODULE_NAME = "parlia"
 
 KEY_MAX_DURATION = "max_duration"
-KEY_MODEL_NAME = "model"
+KEY_WHISPER_MODEL = "whisper_model"
+KEY_CODE_MODEL = "code_model"
 KEY_MODEL_FOLDER = "model_folder_path"
 KEY_INCLUDE_CONCLUSION = "include_conclusion"
 KEY_CONCLUSION_TEXT = "conclusion_text"
@@ -51,13 +52,21 @@ def set_max_duration(value: int):
     user_data.set(MODULE_NAME, KEY_MAX_DURATION, int(value))
 
 
-def get_model_name() -> str:
-    value = user_data.get(MODULE_NAME, KEY_MODEL_NAME)
+def get_whisper_model() -> str:
+    value = user_data.get(MODULE_NAME, KEY_WHISPER_MODEL)
     return value if isinstance(value, str) else "tiny"
 
 
-def set_model_name(name: str):
-    user_data.set(MODULE_NAME, KEY_MODEL_NAME, name)
+def set_whisper_model(name: str):
+    user_data.set(MODULE_NAME, KEY_WHISPER_MODEL, name)
+
+def get_code_model() -> str:
+    value = user_data.get(MODULE_NAME, KEY_CODE_MODEL)
+    return value if isinstance(value, str) else ""
+
+
+def set_code_model(name: str):
+    user_data.set(MODULE_NAME, KEY_CODE_MODEL, name)
 
 
 def get_model_folder_path() -> str:
