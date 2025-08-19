@@ -149,8 +149,10 @@ class MainWindow(QMainWindow):
             logger.info("[_load_module] HomeScreen instancié avec succès")
             return widget
 
+        # ⬇️ remplacer le try par cette version
         try:
-            full_module_path = f"modules.{module_name}"
+            normalized = module_name.lower()  # normalise pour Linux
+            full_module_path = f"modules.{normalized}"
             logger.info(f"[_load_module] importlib -> {full_module_path}")
             mod = importlib.import_module(full_module_path)
             logger.info("[_load_module] Import réussi")
@@ -158,14 +160,10 @@ class MainWindow(QMainWindow):
             if hasattr(mod, "launch"):
                 widget = mod.launch(parent=self)
                 if widget is None:
-                    logger.error(
-                        f"[_load_module] launch() de {module_name} a renvoyé None"
-                    )
+                    logger.error(f"[_load_module] launch() de {module_name} a renvoyé None")
                 else:
                     setattr(widget, "module_name", module_name)
-                    logger.info(
-                        f"[_load_module] Widget {module_name} instancié : {widget}"
-                    )
+                    logger.info(f"[_load_module] Widget {module_name} instancié : {widget}")
                 return widget
 
             logger.error(f"[_load_module] Pas de fonction launch() dans {module_name}")
