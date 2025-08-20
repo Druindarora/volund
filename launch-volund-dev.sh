@@ -3,7 +3,7 @@
 
 # ==============================================================
 # VOLUND - Développement (Linux/Fedora)
-# Port du launchdev.bat → bash
+# Port du launchdev.bat → bash (nettoyé)
 # ==============================================================
 
 set -Eeuo pipefail
@@ -43,72 +43,22 @@ cat <<'BANNER'
 BANNER
 
 # === [1] POSITION MANUELLE (désactivée) ===
-# NOTE: le déplacement de fenêtre n'est pas standard en bash; laissé de côté.
+# NOTE: sous Linux, déplacer/positionner une fenêtre depuis bash n’est pas portable.
+#       Il faudrait des outils du WM (wmctrl/xdotool) et c’est fragile → laissé de côté.
 
-# === [2] LANCEMENT DE VØLUND ===
-
-# --- Vérifie si un VPN est actif (nmcli) ---
-echo "[CHECK] Vérification VPN..."
-if command -v nmcli >/dev/null 2>&1; then
-  if nmcli -t -f NAME,TYPE,DEVICE con show --active | grep -iE '\bvpn\b' >/dev/null 2>&1; then
-    echo "[ALERTE] Un VPN semble actif. Cela peut bloquer certaines fonctionnalités." | tee -a "$LOGFILE"
-  else
-    echo "[CHECK] Aucun VPN détecté." | tee -a "$LOGFILE"
-  fi
-else
-  echo "[INFO] nmcli indisponible, saut du check VPN." | tee -a "$LOGFILE"
-fi
-
-# --- Vérification & lancement d'Ollama ---
-echo "--------------------------------------------------"
-echo "[SYS] Vérification d'Ollama (localhost:11434)"
-echo "--------------------------------------------------"
-
-if ! command -v ollama >/dev/null 2>&1; then
-  echo "❌ [ERREUR] Ollama introuvable dans le PATH." | tee -a "$LOGFILE"
-  echo "👉 Installe-le puis relance (https://ollama.ai)." | tee -a "$LOGFILE"
-else
-  # Démarre ollama serve si pas déjà présent
-  if pgrep -f "ollama serve" >/dev/null 2>&1; then
-    echo "✅ [SYS] Ollama déjà actif." | tee -a "$LOGFILE"
-  else
-    echo "[SYS] Démarrage d'Ollama..." | tee -a "$LOGFILE"
-    OLLAMA_DEBUG=0 nohup ollama serve >/dev/null 2>&1 &
-    sleep 2
-  fi
-
-  # Vérifie le port
-  echo "[SYS] Vérification du port 11434..." | tee -a "$LOGFILE"
-  if ss -lnt 2>/dev/null | grep -q ":11434\b"; then
-    echo "✅ [SYS] Port 11434 ouvert." | tee -a "$LOGFILE"
-  else
-    echo "⚠️  [SYS] Port 11434 non ouvert." | tee -a "$LOGFILE"
-  fi
-
-  # Précharge le modèle codellama (silencieux)
-  echo "[SYS] Préchargement modèle codellama..." | tee -a "$LOGFILE"
-  curl -s -X POST http://127.0.0.1:11434/api/generate \
-    -H 'Content-Type: application/json' \
-    -d '{"model":"codellama:13b-instruct","prompt":"ping","stream":false}' >/dev/null \
-    && echo "✅ [SYS] Modèle codellama préchargé." | tee -a "$LOGFILE" \
-    || echo "❌ [SYS] Échec du préchargement codellama." | tee -a "$LOGFILE"
-fi
-
-echo "✅ [SYS] Vérification Ollama terminée." | tee -a "$LOGFILE"
-
-# --- Lancement de l'IDE (Cursor si dispo, sinon VS Code) ---
+# === [2] LANCEMENT DE L'IDE (détaché du terminal) ===
 echo "[IDE] Lancement IDE..." | tee -a "$LOGFILE"
 if command -v cursor >/dev/null 2>&1; then
   echo "✅ [IDE] Cursor détecté." | tee -a "$LOGFILE"
-  (cursor "$SCRIPT_DIR" >/dev/null 2>&1 &)
+  nohup cursor "$SCRIPT_DIR" >/dev/null 2>&1 & disown || true
 elif command -v code >/dev/null 2>&1; then
   echo "✅ [IDE] VS Code détecté." | tee -a "$LOGFILE"
-  (code "$SCRIPT_DIR" >/dev/null 2>&1 &)
+  nohup code "$SCRIPT_DIR" >/dev/null 2>&1 & disown || true
 else
   echo "⚠️  [IDE] Aucun IDE (cursor/code) trouvé dans le PATH." | tee -a "$LOGFILE"
 fi
 
-# --- Lancement du script Python ---
+# === [3] LANCEMENT DE VØLUND (Python) ===
 echo "[PY] Vérification de l'environnement Python..." | tee -a "$LOGFILE"
 PY_BIN=".venv/bin/python"
 if [[ -x "$PY_BIN" ]]; then
@@ -126,11 +76,21 @@ fi
 # --- Relance optionnelle ---
 read -r -p $'Souhaitez-vous relancer Vølund ? (o/n) : ' userinput || true
 if [[ "${userinput:-n}" =~ ^[oOyY]$ ]]; then
-  exec "$0"
+  # chemin absolu du dossier courant du script
+  SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  BASE_NAME="$(basename -- "${BASH_SOURCE[0]}")"
+
+  # ⬇️ si un script "batch-<nom>" existe, on privilégie celui-là
+  TARGET="${SCRIPT_DIR}/batch-${BASE_NAME}"
+  if [[ ! -f "$TARGET" ]]; then
+    TARGET="${SCRIPT_DIR}/${BASE_NAME}"
+  fi
+
+  # ⚠️ évite les pb de permission en relançant via bash explicitement
+  exec /usr/bin/env bash "$TARGET"
 fi
 
 # --- Fin ---
 echo
 echo "🔍 Fin du script. Consulte le journal ici : $LOGFILE"
 echo
-
