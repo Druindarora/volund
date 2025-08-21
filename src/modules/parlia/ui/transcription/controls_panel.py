@@ -2,7 +2,6 @@
 
 from typing import Optional
 
-import qtawesome as qta
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtWidgets import (
     QComboBox,
@@ -10,7 +9,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QStyle,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -48,9 +46,6 @@ class ControlsPanel(QWidget):
         self.recordButton.clicked.connect(self.toggleRecording)
         self.rootLayout.addSpacing(10)
         self.rootLayout.addWidget(self.recordButton)
-
-        # Barre d'actions (copier / relayer)
-        self.rootLayout.addLayout(self._createActionsToolbar())
 
     # --- Max duration ---
 
@@ -129,32 +124,6 @@ class ControlsPanel(QWidget):
         fraction = int((seconds - int(seconds)) * 100)
         self.transcriptionTimerLabel.setText(f"{minutes:02}:{sec:02}.{fraction:02}")
 
-    # --- Actions toolbar ---
-
-    def _createActionsToolbar(self) -> QHBoxLayout:
-        row = QHBoxLayout()
-
-        self.copyMessageButton = QToolButton(self)
-        self.copyMessageButton.setToolTip("Copier le message")
-        self.copyMessageButton.setIcon(qta.icon("fa5s.copy", color="#E5E5E5"))
-        self.copyMessageButton.clicked.connect(self._emitCopyMessage)
-        row.addWidget(self.copyMessageButton)
-
-        self.copyResponseButton = QToolButton(self)
-        self.copyResponseButton.setToolTip("Copier la réponse")
-        self.copyResponseButton.setIcon(qta.icon("fa5s.copy", color="#B0E0E6"))
-        self.copyResponseButton.clicked.connect(self._emitCopyResponse)
-        row.addWidget(self.copyResponseButton)
-
-        self.relayButton = QToolButton(self)
-        self.relayButton.setToolTip("Envoyer au chat")
-        self.relayButton.setIcon(qta.icon("fa5s.paper-plane", color="#90EE90"))
-        self.relayButton.clicked.connect(self._emitRelay)
-        row.addWidget(self.relayButton)
-
-        row.addStretch()
-        return row
-
     # --- Slots / signaux ---
 
     @Slot()
@@ -196,15 +165,6 @@ class ControlsPanel(QWidget):
         self.relayRequested.emit()
 
     # --- Helpers état UI ---
-
-    def enableCopyButtons(self, enabled: bool) -> None:
-        """Active/désactive les boutons de copie."""
-        self.copyMessageButton.setEnabled(enabled)
-        self.copyResponseButton.setEnabled(enabled)
-
-    def enableRelayButton(self, enabled: bool) -> None:
-        """Active/désactive le bouton d'envoi au chat."""
-        self.relayButton.setEnabled(enabled)
 
     def setRecordingEnabled(self, enabled: bool) -> None:
         """Active/désactive le bouton d'enregistrement."""

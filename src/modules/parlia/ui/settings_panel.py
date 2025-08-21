@@ -20,6 +20,8 @@ from modules.parlia.services.ia_server_service import IaServerService
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
+from src.modules.parlia.services.ia_server_ollama_service import IaServerOllamaService
+from src.modules.parlia.services.ia_server_whisper_service import IaServerWhisperService
 
 logger = get_logger("SettingsPanel")
 
@@ -31,6 +33,8 @@ class SettingsPanel(QWidget):
 
         # Service unique IA
         self.iaServerService = IaServerService("http://192.168.0.25:8000")
+        self.iaServerWhisperService = IaServerWhisperService("http://192.168.0.25:8000")
+        self.iaServerOllamaService = IaServerOllamaService("http://192.168.0.25:8000")
 
         # État local pour la sélection Whisper
         self.lastWhisperSelect: Optional[dict[str, Any]] = (
