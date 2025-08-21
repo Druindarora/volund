@@ -158,9 +158,7 @@ class HomePanel(QWidget):
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.settings_panel = SettingsPanel(
-            update_record_callback=self.transcription_panel.update_record_button_state
-        )
+        self.settings_panel = SettingsPanel()
         layout.addWidget(self.settings_panel)
 
         container.setLayout(layout)

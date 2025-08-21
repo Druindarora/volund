@@ -1,30 +1,4 @@
-# === FICHIER : transcription_panel.py ===
-# 🔍 Audit du panneau principal de transcription vocale
-# --------------------------------------------------
-# ✅ Rôle : gérer l’enregistrement audio, afficher les temps, montrer la transcription, formatter le texte
-# 📁 Composant principal de l’UI active de Parlia
-# --------------------------------------------------
-
-# ✅ Points positifs :
-# - Bon découpage logique (gauche = contrôles, droite = texte)
-# - `toggle_recording()` bien structuré, proprement découplé
-# - Utilise `parlia_state` et `whisper_service` de manière correcte
-# - `apply_ui_state()` bien en place pour rafraîchir les états
-# - Méthodes `update_xxx_timer()` efficaces et cohérentes
-# - Barre de formatage bien encapsulée (bold, italic, emoji)
-
-# 🔄 Suggestions (refactor possible à moyen terme) :
-# 1. 🔁 Extraire la barre de formatage en `TranscriptionFormattingToolbar(QWidget)`
-# 2. 🔁 Extraire le bloc gauche (`create_left_side`) en `TranscriptionControlsPanel`
-# 3. 🔁 Intégrer un `TranscriptionTextWidget` avec outils + QTextEdit
-# 4. 🧪 Optionnel : ajouter un bouton pour copier le texte transcrit
-# 5. ✅ Ajouter logs via logger pour `toggle_recording`, etc.
-
-# 🟡 Code lisible mais long (~350 lignes)
-# Un refactor léger en composants réutilisables allègera les panels et favorisera les tests.
-
-# ✅ Tu peux t’appuyer dessus tel quel pour le moment. Il est fonctionnel et prêt à évoluer en douceur.
-
+# transcription_panel.py
 
 from typing import Optional
 
@@ -46,7 +20,6 @@ from PySide6.QtWidgets import (
 from modules.parlia.i18n.parlia_strings import ParliaStrings
 from modules.parlia.services.audioService import audio_service
 from modules.parlia.services.parlia_data import get_max_duration, set_max_duration
-from modules.parlia.services.parlia_state_manager import parlia_state
 from modules.parlia.services.whisper_service import whisper_service
 
 # from modules.parlia.ui.dialogs.action_settings_dialog import ActionSettingsDialog
@@ -63,9 +36,6 @@ class TranscriptionPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.model_ready = True  # à remplacer si tu veux mettre une vraie logique
-        # self.model_ready = whisper_service.is_ready()
-
         # Création des layouts
         self.main_layout = QVBoxLayout()
         self._add_header()
@@ -80,11 +50,10 @@ class TranscriptionPanel(QWidget):
         self.setLayout(self.main_layout)
         load_qss_for(self)
 
-        # ✅ Maintenant que tous les attributs sont là, on peut s’abonner en toute sécurité
-        parlia_state.register_ui_component(self)
+        # État UI initial (simplifié, sans statut local)
         self.apply_ui_state()
 
-    def _add_header(self):
+    def _add_header(self) -> None:
         """
         Ajouter un en-tête avec un titre et un bouton engrenage.
         """
@@ -110,40 +79,29 @@ class TranscriptionPanel(QWidget):
         # Ajouter le layout à l'interface principale
         self.main_layout.addLayout(header_layout)
 
-    def open_transcription_settings(self):
+    def open_transcription_settings(self) -> None:
         """
         Ouvre la fenêtre TranscriptionSettingsDialog en modal.
         """
         transcription_settings_dialog = TranscriptionSettingsDialog(self)
         transcription_settings_dialog.exec_()
 
-    def create_left_side(self):
+    def create_left_side(self) -> QWidget:
         """
         Create the left side of the panel with buttons, labels, etc.
         """
         left_widget = QWidget()
         left_layout = QVBoxLayout()
 
-        # Add a status label
-        status_layout = QHBoxLayout()
-        static_status_label = QLabel(ParliaStrings.Transcription.STATUT)
-        static_status_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        self.status_value_label = QLabel()
+        # (Statut local supprimé)
 
-        self.status_value_label.setObjectName("statusLabel")
-        status_layout.addWidget(static_status_label)
-        status_layout.addWidget(self.status_value_label)
-        left_layout.addLayout(status_layout)
-
-        # Add a time management section
+        # Section durées
         self.manage_times(left_layout)
 
-        # Add a record button
+        # Bouton d'enregistrement
         record_button = self.create_record_button()
         left_layout.addSpacing(10)
         left_layout.addWidget(record_button)
-
-        self.update_record_button_state()
 
         left_widget.setLayout(left_layout)
         return left_widget
@@ -156,12 +114,8 @@ class TranscriptionPanel(QWidget):
 
         self.record_button = QPushButton(ParliaStrings.Transcription.RECORD)
         self.record_button.setObjectName("recordButton")
-        self.record_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-        )
-        self.record_button.setEnabled(
-            parlia_state.is_ready_to_record()
-        )  # Désactivé par défaut
+        self.record_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+        self.record_button.setEnabled(True)  # plus de check parlia_state
 
         self.record_button.clicked.connect(self.toggle_recording)
         return self.record_button
@@ -199,12 +153,11 @@ class TranscriptionPanel(QWidget):
             audio_service.stop_recording()
             logger.info("Recording stopped...")
 
-            # ⏳ Transcription asynchrone
-            parlia_state.set_transcribing(True)
+            # ⏳ Transcription asynchrone (sans parlia_state)
             whisper_service.transcribe_async(callback=self._on_transcription_done)
             whisper_service.connect_transcription_timer(self.update_transcription_timer)
 
-    def manage_times(self, layout: QVBoxLayout):
+    def manage_times(self, layout: QVBoxLayout) -> None:
         """
         Manage time-related elements in the layout.
         """
@@ -220,7 +173,7 @@ class TranscriptionPanel(QWidget):
         transcription_time_layout = self.create_transcription_time_section()
         layout.addLayout(transcription_time_layout)
 
-    def create_max_duration_section(self):
+    def create_max_duration_section(self) -> QHBoxLayout:
         """
         Create the max duration section with a label and combobox.
         Load saved duration from UserDataManager and save changes to parlia.jsonData.
@@ -240,7 +193,7 @@ class TranscriptionPanel(QWidget):
 
         return max_duration_layout
 
-    def _populate_duration_options(self):
+    def _populate_duration_options(self) -> None:
         """
         Populate the combobox with predefined duration options.
         """
@@ -256,14 +209,11 @@ class TranscriptionPanel(QWidget):
         for key, value in self.duration_options.items():
             self.max_duration_combobox.addItem(value, int(key))
 
-    def _load_saved_duration(self):
+    def _load_saved_duration(self) -> None:
         saved_duration_key = get_max_duration()
         logger.info(f"Loaded saved duration key: {saved_duration_key}")
 
-        if (
-            saved_duration_key is not None
-            and int(saved_duration_key) in self.duration_options
-        ):
+        if saved_duration_key is not None and int(saved_duration_key) in self.duration_options:
             index = self.max_duration_combobox.findData(int(saved_duration_key))
 
             if index != -1:
@@ -271,19 +221,18 @@ class TranscriptionPanel(QWidget):
         else:
             self.max_duration_combobox.setCurrentIndex(0)
 
-        # ✅ Ajout essentiel : forcer la mise à jour de l’état global
+        # Mise à jour de la persistance seulement
         current_key = self.max_duration_combobox.currentData()
-        parlia_state.set_max_duration(current_key)
+        set_max_duration(current_key)
 
-    def save_max_duration(self):
+    def save_max_duration(self) -> None:
         """
         Save the selected max duration key to UserDataManager.
         """
         selected_key = self.max_duration_combobox.currentData()
         set_max_duration(selected_key)
-        parlia_state.set_max_duration(selected_key)
 
-    def create_recording_time_section(self):
+    def create_recording_time_section(self) -> QHBoxLayout:
         """
         Create the recording time section with a label and timer.
         """
@@ -297,18 +246,14 @@ class TranscriptionPanel(QWidget):
 
         return recording_time_layout
 
-    def update_timer_label(self, seconds: float):
+    def update_timer_label(self, seconds: float) -> None:
         minutes = int(seconds) // 60
         sec = int(seconds) % 60
         self.recording_timer_label.setText(f"{minutes:02}:{sec:02}")
 
-    def create_transcription_time_section(self):
-        transcription_time_label = QLabel(
-            ParliaStrings.Transcription.TRANSCRIPTION_TIME
-        )
-        self.transcription_timer_label = QLabel(
-            ParliaStrings.Transcription.TIMER_DEFAULT
-        )
+    def create_transcription_time_section(self) -> QHBoxLayout:
+        transcription_time_label = QLabel(ParliaStrings.Transcription.TRANSCRIPTION_TIME)
+        self.transcription_timer_label = QLabel(ParliaStrings.Transcription.TIMER_DEFAULT)
         self.transcription_timer_label.setProperty("class", "timerLabel")
 
         transcription_time_layout = QHBoxLayout()
@@ -317,15 +262,13 @@ class TranscriptionPanel(QWidget):
 
         return transcription_time_layout
 
-    def update_transcription_timer(self, seconds: float):
+    def update_transcription_timer(self, seconds: float) -> None:
         minutes = int(seconds) // 60
         sec = int(seconds) % 60
-        fraction = int(
-            (seconds - int(seconds)) * 100
-        )  # ou remplacer par * 10 pour avec des dixièmes
+        fraction = int((seconds - int(seconds)) * 100)
         self.transcription_timer_label.setText(f"{minutes:02}:{sec:02}.{fraction:02}")
 
-    def create_right_side(self):
+    def create_right_side(self) -> QWidget:
         """
         Create the right side of the panel with a QTextEdit for transcription text and a formatting toolbar.
         """
@@ -338,7 +281,7 @@ class TranscriptionPanel(QWidget):
         right_widget.setLayout(right_layout)
         return right_widget
 
-    def create_formatting_toolbar(self):
+    def create_formatting_toolbar(self) -> QHBoxLayout:
         """
         Create a formatting toolbar with buttons for bold, italic, emoji, and clear formatting.
         """
@@ -366,29 +309,23 @@ class TranscriptionPanel(QWidget):
 
         return toolbar_layout
 
-    def create_transcription_text(self):
+    def create_transcription_text(self) -> QTextEdit:
         """
         Create and configure a QTextEdit for transcription results.
         """
         transcription_text = QTextEdit()
-        transcription_text.setPlaceholderText(
-            ParliaStrings.Transcription.TRANSCRIBED_TEXT
-        )
+        transcription_text.setPlaceholderText(ParliaStrings.Transcription.TRANSCRIBED_TEXT)
         transcription_text.setAcceptRichText(True)
         transcription_text.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         transcription_text.setFont(QFont("Courier New", 10))  # Monospace font
         transcription_text.setStyleSheet("padding: 10px;")
-        transcription_text.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-        transcription_text.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
+        transcription_text.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        transcription_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         self.transcription_text = transcription_text
         return transcription_text
 
-    def _on_transcription_done(self, text: Optional[str]):
+    def _on_transcription_done(self, text: Optional[str]) -> None:
         """
         Callback appelé automatiquement à la fin de la transcription.
         Affiche le texte transcrit ou un message d’erreur.
@@ -398,29 +335,27 @@ class TranscriptionPanel(QWidget):
         else:
             self.transcription_text.setPlainText(text)
 
-        # Réactiver les boutons, réinitialiser l’état
-        parlia_state.set_transcribing(False)
-        self.update_record_button_state()
+        # Plus de gestion d'état local ici
 
-    def apply_bold_formatting(self):
+    def apply_bold_formatting(self) -> None:
         cursor = self.transcription_text.textCursor()
         if cursor.hasSelection():
             format = QTextCharFormat()
             format.setFontWeight(QFont.Weight.Bold)
             cursor.mergeCharFormat(format)
 
-    def apply_italic_formatting(self):
+    def apply_italic_formatting(self) -> None:
         cursor = self.transcription_text.textCursor()
         if cursor.hasSelection():
             format = QTextCharFormat()
             format.setFontItalic(True)
             cursor.mergeCharFormat(format)
 
-    def insert_emoji(self):
+    def insert_emoji(self) -> None:
         cursor = self.transcription_text.textCursor()
         cursor.insertText("😊")
 
-    def clear_formatting(self):
+    def clear_formatting(self) -> None:
         cursor = self.transcription_text.textCursor()
         if cursor.hasSelection():
             format = QTextCharFormat()
@@ -428,7 +363,7 @@ class TranscriptionPanel(QWidget):
             format.setFontItalic(False)
             cursor.mergeCharFormat(format)
 
-    def get_transcription_text(self):
+    def get_transcription_text(self) -> str:
         """
         Retrieve the text from the transcription text field.
         """
@@ -436,31 +371,17 @@ class TranscriptionPanel(QWidget):
         logger.info(f"Transcription text retrieved: {text}")
         return text
 
-    def update_record_button_state(self):
-        self.record_button.setEnabled(parlia_state.is_ready_to_record())
+    def apply_ui_state(self) -> None:
+        # Simplifié : pas de statut local, bouton actif par défaut
+        if not hasattr(self, "record_button"):
+            logger.warning("[WARN] apply_ui_state() appelé trop tôt")
+            return
+        self.record_button.setEnabled(True)
 
     def closeEvent(self, event):
         self.__deleted__ = True
         try:
-            parlia_state.unregister_ui_component(self)
             whisper_service.cleanup()
         except Exception as e:
-            logger.error(f"[Panel] Erreur lors du désabonnement : {e}")
+            logger.error(f"[Panel] Erreur lors du cleanup : {e}")
         super().closeEvent(event)
-
-    def update_status_label(self):
-        text, status_type = parlia_state.get_status_info()
-        self.status_value_label.setText(text)
-
-        # Appliquer dynamiquement la classe CSS
-        self.status_value_label.setObjectName(f"statusLabel_{status_type}")
-        self.status_value_label.style().unpolish(self.status_value_label)
-        self.status_value_label.style().polish(self.status_value_label)
-
-    def apply_ui_state(self):
-        if not hasattr(self, "record_button"):
-            logger.warning("[WARN] apply_ui_state() appelé trop tôt")
-            return
-        self.record_button.setEnabled(parlia_state.is_ready_to_record())
-        self.max_duration_combobox.setEnabled(not parlia_state.is_ui_locked())
-        self.update_status_label()

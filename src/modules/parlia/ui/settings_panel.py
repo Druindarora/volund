@@ -1,9 +1,10 @@
 # settings_panel.py
 
-from typing import Optional
+import threading
+from typing import Any, Optional
 
 import qtawesome as qta
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -31,12 +32,23 @@ class SettingsPanel(QWidget):
         # Service unique IA
         self.iaServerService = IaServerService("http://192.168.0.25:8000")
 
+        # État local pour la sélection Whisper
+        self.lastWhisperSelect: Optional[dict[str, Any]] = (
+            None  # contient potentiellement {state,current,requested}
+        )
+        self.whisperPollingTimer = QTimer(self)
+        self.whisperPollingTimer.setInterval(1500)
+        self.whisperPollingTimer.timeout.connect(self._pollWhisperReady)
+
         # UI
         self._buildUi()
         load_qss_for(self)
 
         # Init statuts (unique point d’entrée)
         self._refreshStatusAndApply()
+
+        # Sélectionne le modèle Whisper sauvegardé au démarrage (sans bloquer l'UI)
+        self._initWhisperSelection()
 
     # --- Construction UI ---
 
@@ -243,14 +255,30 @@ class SettingsPanel(QWidget):
             self._setStatus(self.serverWhisperValue, "Injoignable", "error")
 
     def _updateWhisperStatus(self) -> None:
-        """Bloc 2 : affiche le modèle Whisper sélectionné (vert si prêt, sinon gris)."""
+        """Bloc 2 : affiche le modèle Whisper sélectionné et l’état de chargement."""
         try:
             if self.iaServerService.getWhisperAvailable():
-                model = self.iaServerService.getCurrentWhisperModel() or "—"
-                # Couleur verte uniquement si prêt
+                current = self.iaServerService.getCurrentWhisperModel() or "—"
                 state = (self.iaServerService.getWhisperState() or "").lower()
-                color = "ready" if state in ("ready", "running", "idle") else "neutral"
-                self._setStatus(self.whisperModelValue, model, color)
+                requested = ""
+                if self.lastWhisperSelect:
+                    req = self.lastWhisperSelect.get("requested")
+                    if isinstance(req, str):
+                        requested = req
+
+                if state == "loading" and requested and requested != current:
+                    # Affiche "current (chargement → requested)" en orange
+                    self._setStatus(
+                        self.whisperModelValue,
+                        f"{current} (chargement → {requested})",
+                        "warning",
+                    )
+                    self._startWhisperPolling()
+                elif state == "ready":
+                    self._setStatus(self.whisperModelValue, current, "ready")
+                    self._stopWhisperPolling()
+                else:
+                    self._setStatus(self.whisperModelValue, current or "—", "neutral")
             else:
                 self._setStatus(self.whisperModelValue, "—", "neutral")
         except Exception as e:
@@ -287,6 +315,49 @@ class SettingsPanel(QWidget):
         self._refreshStatusAndApply()
         if self.update_record_callback:
             self.update_record_callback()
+
+    # --- Init sélection Whisper + polling ---
+
+    def _initWhisperSelection(self) -> None:
+        """Lance la sélection du modèle Whisper sauvegardé, sans bloquer l'UI."""
+        saved = parlia_data.get_whisper_model()
+        if not saved:
+            return
+        # Lancer la requête POST en thread pour éviter de bloquer l'UI
+        t = threading.Thread(target=self._asyncSelectWhisper, args=(saved,), daemon=True)
+        t.start()
+        # Démarre le polling immédiat (au cas où l'état passe à 'loading')
+        self._startWhisperPolling()
+
+    def _asyncSelectWhisper(self, modelName: str) -> None:
+        """Thread: POST /whisper/select et mémorise la réponse."""
+        try:
+            info = self.iaServerService.selectWhisperModel(modelName)
+            # Mémorise la dernière réponse (peut contenir state/current/requested)
+            self.lastWhisperSelect = info or {}
+        except Exception as e:
+            logger.warning("selectWhisperModel a échoué: %s", e, exc_info=True)
+
+    def _startWhisperPolling(self) -> None:
+        """Démarre le polling périodique de /status jusqu'à 'ready'."""
+        if not self.whisperPollingTimer.isActive():
+            self.whisperPollingTimer.start()
+
+    def _stopWhisperPolling(self) -> None:
+        """Arrête le polling."""
+        if self.whisperPollingTimer.isActive():
+            self.whisperPollingTimer.stop()
+
+    def _pollWhisperReady(self) -> None:
+        """Tick de polling: rafraîchit les statuts et s'arrête si Whisper est prêt."""
+        try:
+            self.iaServerService.refreshStatus()
+        except Exception as e:
+            logger.error("Polling Whisper: refreshStatus a échoué: %s", e)
+            # On laisse l'UI refléter l'état actuel
+        self._updateServerStatus()
+        self._updateWhisperStatus()
+        self._updateCodeStatus()
 
 
 # --- Petit helper pour instancier des QLabel colorables proprement ---
