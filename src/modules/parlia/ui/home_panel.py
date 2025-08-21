@@ -44,10 +44,12 @@ from modules.parlia.services.parlia_state_manager import parlia_state
 from modules.parlia.ui.action_panel import ActionPanel
 from modules.parlia.ui.fileTree_panel import FileTreePanel
 from modules.parlia.ui.settings_panel import SettingsPanel
-from modules.parlia.ui.transcription_panel import TranscriptionPanel
+
+# from modules.parlia.ui.transcription_panel import TranscriptionPanel
 from modules.parlia.utils import hotkeys
 from modules.trakia.ui.tracker_widget import TrackerWidgetPanel
 from src.core.logger_manager import get_logger
+from src.modules.parlia.ui.transcription.transcription_panel import TranscriptionPanel
 
 logger = get_logger("ParliaHome")
 

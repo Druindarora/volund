@@ -1,0 +1,126 @@
+# transcription_panel.py
+
+from typing import Optional
+
+import qtawesome as qta
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from modules.parlia.i18n.parlia_strings import ParliaStrings
+from modules.parlia.services.whisper_service import whisper_service
+from modules.parlia.ui.dialogs.transcription_settings_dialog import (
+    TranscriptionSettingsDialog,
+)
+from modules.parlia.utils.stylesheet_loader import load_qss_for
+from src.core.logger_manager import get_logger
+from src.modules.parlia.services.audioService import audio_service
+from src.modules.parlia.ui.transcription.controls_panel import ControlsPanel
+from src.modules.parlia.ui.transcription.conversation_panel import ConversationPanel
+
+logger = get_logger("TranscriptionPanel")
+
+
+# --- Orchestrateur ---
+
+
+class TranscriptionPanel(QWidget):
+    """Orchestrateur : assemble ControlsPanel + ConversationPanel."""
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self.mainLayout = QVBoxLayout(self)
+        self._addHeader()
+
+        # Sous-panneaux
+        self.controlsPanel = ControlsPanel(parent=self)
+
+        # Connecter les signaux du ControlsPanel à l’orchestrateur
+        self.controlsPanel.recordingStarted.connect(self._onRecordingStarted)
+        self.controlsPanel.recordingStopped.connect(self._onRecordingStopped)
+        self.controlsPanel.copyMessageRequested.connect(self._onCopyMessage)
+        self.controlsPanel.copyResponseRequested.connect(self._onCopyResponse)
+        self.controlsPanel.relayRequested.connect(self._onRelayRequested)
+
+        self.conversationPanel = ConversationPanel(self)
+
+        contentRow = QHBoxLayout()
+        contentRow.addWidget(self.controlsPanel)
+        contentRow.addWidget(self.conversationPanel)
+        self.mainLayout.addLayout(contentRow)
+
+        load_qss_for(self)
+        self.applyUiState()
+
+    def _addHeader(self) -> None:
+        header = QHBoxLayout()
+
+        title = QLabel(ParliaStrings.Home.TRANSCRIPTION_TITLE, self)
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.addWidget(title)
+
+        header.addStretch()
+
+        gearButton = QToolButton(self)
+        gearButton.setIcon(qta.icon("fa5s.cog", color="#E5E5E5"))
+        gearButton.setToolTip("Ouvrir les paramètres de transcription")
+        gearButton.setFixedSize(32, 32)
+        gearButton.clicked.connect(self.openTranscriptionSettings)
+        header.addWidget(gearButton)
+
+        self.mainLayout.addLayout(header)
+
+    def openTranscriptionSettings(self) -> None:
+        dlg = TranscriptionSettingsDialog(self)
+        dlg.exec_()
+
+    # --- Orchestration ---
+
+    def applyUiState(self) -> None:
+        # Orchestrateur léger : rien à bloquer ici pour l’instant
+        pass
+
+    def _onTranscriptionDone(self, text: Optional[str]) -> None:
+        """Callback reçu du ControlsPanel → met à jour la conversation."""
+        if text is None:
+            self.conversationPanel.setMessageText("⚠️ Erreur lors de la transcription.")
+        else:
+            self.conversationPanel.setMessageText(text)
+
+    # --- Lifecycle ---
+
+    def closeEvent(self, event):
+        try:
+            whisper_service.cleanup()
+        except Exception as e:
+            logger.error(f"[TranscriptionPanel] cleanup error: {e}")
+        super().closeEvent(event)
+
+    def _onRecordingStarted(self) -> None:
+        audio_service.start_recording()
+        audio_service.connect_timer(self.controlsPanel.updateTimerLabel)
+
+    def _onRecordingStopped(self) -> None:
+        audio_service.stop_recording()
+        whisper_service.transcribe_async(callback=self._onTranscriptionDone)
+        whisper_service.connect_transcription_timer(self.controlsPanel.updateTranscriptionTimer)
+
+    def _onCopyMessage(self) -> None:
+        text = self.conversationPanel.getMessageText()
+        QApplication.clipboard().setText(text)
+
+    def _onCopyResponse(self) -> None:
+        text = self.conversationPanel.getResponseText()
+        QApplication.clipboard().setText(text)
+
+    def _onRelayRequested(self) -> None:
+        text = self.conversationPanel.getMessageText()
+        # ⚡️ ICI → envoi au chat / API selon ton infra

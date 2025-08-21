@@ -21,12 +21,15 @@
 # Un split en sous-widgets thématiques améliorerait la lisibilité et la maintenabilité.
 
 
+from typing import Optional
+
 import qtawesome as qta
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QTextEdit,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -48,7 +51,9 @@ from modules.parlia.services.vsCodeService import (
     focus_vscode_qt,
 )
 from modules.parlia.ui.dialogs.action_settings_dialog import ActionSettingsDialog
-from modules.parlia.ui.transcription_panel import TranscriptionPanel
+
+# from modules.parlia.ui.transcription_panel import TranscriptionPanel
+from modules.parlia.ui.transcription.transcription_panel import TranscriptionPanel
 from modules.parlia.utils.chatrelay_filetools import add_files_to_text_area
 from modules.parlia.utils.clipboard_utils import copy_to_clipboard
 from modules.parlia.utils.stylesheet_loader import load_qss_for
@@ -58,7 +63,9 @@ logger = get_logger("ActionPanel")
 
 
 class ActionPanel(QWidget):
-    def __init__(self, transcription_panel: TranscriptionPanel, parent=None):
+    def __init__(
+        self, transcription_panel: TranscriptionPanel, parent: Optional[QWidget] = None
+    ) -> None:
         super().__init__(parent)
         self.transcription_panel = transcription_panel
 
@@ -89,7 +96,7 @@ class ActionPanel(QWidget):
         load_qss_for(self)
         parlia_state.register_ui_component(self)
 
-    def _add_header(self):
+    def _add_header(self) -> None:
         """
         Ajouter un en-tête avec un titre et un bouton engrenage.
         """
@@ -115,14 +122,14 @@ class ActionPanel(QWidget):
         # Ajouter le layout à l'interface principale
         self.main_layout.addLayout(header_layout)
 
-    def open_actions_settings(self):
+    def open_actions_settings(self) -> None:
         """
         Ouvre la fenêtre ActionSettingsDialog en modal.
         """
         action_settings_dialog = ActionSettingsDialog(self)
         action_settings_dialog.exec_()
 
-    def create_row_one(self):
+    def create_row_one(self) -> QHBoxLayout:
         """
         Create first row with two buttons:
         - "Copier vers ChatRelay"
@@ -134,7 +141,7 @@ class ActionPanel(QWidget):
         layout.addWidget(self.create_add_files_button())
         return layout
 
-    def create_chatrelay_button(self):
+    def create_chatrelay_button(self) -> QPushButton:
         """
         Create the "Copier [ChatRelay]" button.
         """
@@ -144,7 +151,7 @@ class ActionPanel(QWidget):
         button.clicked.connect(self.copy_chatrelay_text)
         return button
 
-    def copy_chatrelay_text(self):
+    def copy_chatrelay_text(self) -> None:
         """
         Copy the text '[ChatRelay]' to the clipboard.
         """
@@ -152,7 +159,7 @@ class ActionPanel(QWidget):
         copy_to_clipboard(text)
         logger.info("Text '[ChatRelay]' copied to clipboard.")
 
-    def create_copy_text_button(self):
+    def create_copy_text_button(self) -> QPushButton:
         """
         Create the "Copier le texte" button.
         """
@@ -162,21 +169,24 @@ class ActionPanel(QWidget):
         button.clicked.connect(lambda: self.copy_text(self.transcription_panel))
         return button
 
-    def copy_text(self, transcription_panel: TranscriptionPanel):
-        text = transcription_panel.get_transcription_text()
+    def copy_text(self, transcription_panel: TranscriptionPanel) -> None:
+        text: str = "toto"  # transcription_panel.get_transcription_text()
         copy_to_clipboard(text)
         logger.info(f"Transcription text copied to clipboard: {text}")
 
-    def create_add_files_button(self):
+    def create_add_files_button(self) -> QPushButton:
+        transcription_text = QTextEdit()
         button_add_files = QPushButton(ParliaStrings.Action.ADD_FILES)
         button_add_files.setIcon(qta.icon("fa5s.file-medical", color="#333333"))
         button_add_files.setObjectName("addFilesButton")
         button_add_files.clicked.connect(
-            lambda: add_files_to_text_area(self.transcription_panel.transcription_text)
+            lambda: add_files_to_text_area(
+                transcription_text
+            )  # self.transcription_panel.transcription_text)
         )
         return button_add_files
 
-    def create_row_two(self):
+    def create_row_two(self) -> QHBoxLayout:
         """
         Create second row with one button:
         - "Ajouter des fichiers à la requête"
@@ -187,7 +197,7 @@ class ActionPanel(QWidget):
         layout.addWidget(self.create_focus_and_code_button())
         return layout
 
-    def create_focus_chatgpt_button(self):
+    def create_focus_chatgpt_button(self) -> QPushButton:
         """
         Create the "Focus vers ChatGPT" button.
         """
@@ -196,13 +206,13 @@ class ActionPanel(QWidget):
         button.setObjectName("focusChatGPTButton")
         button.clicked.connect(
             lambda: send_text_to_chatgpt(
-                text=self.transcription_panel.get_transcription_text(),
+                text="",  # self.transcription_panel.get_transcription_text(),
                 status_callback=self.show_status_message,
             )
         )
         return button
 
-    def create_focus_vscode_button(self):
+    def create_focus_vscode_button(self) -> QPushButton:
         """
         Create the "Focus vers VS Code" button.
         """
@@ -211,14 +221,14 @@ class ActionPanel(QWidget):
         button.setObjectName("focusVSCodeButton")
         button.clicked.connect(
             lambda: focus_vscode_qt(
-                text=self.transcription_panel.get_transcription_text(),
+                text="",  # self.transcription_panel.get_transcription_text(),
                 status_callback=self.show_status_message,
                 countdown_callback=self.show_countdown_message,
             )
         )
         return button
 
-    def create_focus_and_code_button(self):
+    def create_focus_and_code_button(self) -> QPushButton:
         """
         Create the "Focus et Code" button.
         """
@@ -234,7 +244,7 @@ class ActionPanel(QWidget):
         )
         return button
 
-    def create_row_three(self):
+    def create_row_three(self) -> QHBoxLayout:
         """
         Create third row with six buttons:
         - "Focus vers ChatGPT"
@@ -251,7 +261,7 @@ class ActionPanel(QWidget):
         layout.addWidget(self.create_generate_tests_button())
         return layout
 
-    def create_focus_and_refacto_button(self):
+    def create_focus_and_refacto_button(self) -> QPushButton:
         """
         Create the "Focus and Refacto" button.
         """
@@ -260,14 +270,14 @@ class ActionPanel(QWidget):
         button.setObjectName("focusAndRefactoButton")
         button.clicked.connect(
             lambda: focus_vscode_and_refacto(
-                text=self.transcription_panel.get_transcription_text(),
+                text="",  # self.transcription_panel.get_transcription_text(),
                 status_callback=self.show_status_message,
                 countdown_callback=self.show_countdown_message,
             )
         )
         return button
 
-    def create_explain_code_button(self):
+    def create_explain_code_button(self) -> QPushButton:
         """
         Create the "Expliquer le code" button.
         """
@@ -276,14 +286,14 @@ class ActionPanel(QWidget):
         button.setObjectName("explainCodeButton")
         button.clicked.connect(
             lambda: explain_code_to_vscode(
-                method_name=self.transcription_panel.get_transcription_text(),
+                method_name="",  # self.transcription_panel.get_transcription_text(),
                 status_callback=self.show_status_message,
                 countdown_callback=self.show_countdown_message,
             )
         )
         return button
 
-    def create_analyze_code_button(self):
+    def create_analyze_code_button(self) -> QPushButton:
         """
         Create the "Analyser le code" button.
         """
@@ -298,7 +308,7 @@ class ActionPanel(QWidget):
         )
         return button
 
-    def create_generate_tests_button(self):
+    def create_generate_tests_button(self) -> QPushButton:
         """
         Create the "Générer des tests" button.
         """
@@ -310,7 +320,7 @@ class ActionPanel(QWidget):
         # )
         return button
 
-    def show_status_message(self, message: str, success: bool = True):
+    def show_status_message(self, message: str, success: bool = True) -> None:
         """
         Update the status label with the provided message.
         Change the color based on success or failure.
@@ -319,11 +329,11 @@ class ActionPanel(QWidget):
         color = "green" if success else "red"
         self.status_label.setStyleSheet(f"color: {color}; font-weight: bold;")
 
-    def show_countdown_message(self, message: str):
+    def show_countdown_message(self, message: str) -> None:
         self.status_label.setText(message)
         self.status_label.setStyleSheet("color: orange; font-style: italic;")
 
-    def apply_ui_state(self):
+    def apply_ui_state(self) -> None:
         is_locked = parlia_state.is_ui_locked()
         for button in self.findChildren(QPushButton):
             button.setEnabled(not is_locked)
