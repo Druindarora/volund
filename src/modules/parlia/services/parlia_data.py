@@ -48,7 +48,7 @@ def get_max_duration() -> int:
     return 0
 
 
-def set_max_duration(value: int):
+def set_max_duration(value: int) -> None:
     user_data.set(MODULE_NAME, KEY_MAX_DURATION, int(value))
 
 
@@ -57,15 +57,16 @@ def get_whisper_model() -> str:
     return value if isinstance(value, str) else "tiny"
 
 
-def set_whisper_model(name: str):
+def set_whisper_model(name: str) -> None:
     user_data.set(MODULE_NAME, KEY_WHISPER_MODEL, name)
+
 
 def get_code_model() -> str:
     value = user_data.get(MODULE_NAME, KEY_CODE_MODEL)
     return value if isinstance(value, str) else ""
 
 
-def set_code_model(name: str):
+def set_code_model(name: str) -> None:
     user_data.set(MODULE_NAME, KEY_CODE_MODEL, name)
 
 
@@ -74,7 +75,7 @@ def get_model_folder_path() -> str:
     return value if isinstance(value, str) else ""
 
 
-def set_model_folder_path(path: str):
+def set_model_folder_path(path: str) -> None:
     user_data.set(MODULE_NAME, KEY_MODEL_FOLDER, path)
 
 
@@ -83,7 +84,7 @@ def get_include_conclusion() -> bool:
     return bool(value)
 
 
-def set_include_conclusion(enabled: bool):
+def set_include_conclusion(enabled: bool) -> None:
     user_data.set(MODULE_NAME, KEY_INCLUDE_CONCLUSION, enabled)
 
 
@@ -92,11 +93,11 @@ def get_conclusion_text() -> str:
     return value if isinstance(value, str) else ""
 
 
-def set_conclusion_text(text: str):
+def set_conclusion_text(text: str) -> None:
     user_data.set(MODULE_NAME, KEY_CONCLUSION_TEXT, text)
 
 
-def set_prompt_code_vs_code(prompt: str):
+def set_prompt_code_vs_code(prompt: str) -> None:
     user_data.set(MODULE_NAME, KEY_PROMPT_CODE_VS_CODE, prompt)
 
 
@@ -107,7 +108,7 @@ def get_prompt(key: str) -> str:
     return "Aucun prompt"
 
 
-def set_prompt(key: str, prompt: str):
+def set_prompt(key: str, prompt: str) -> None:
     user_data.set(MODULE_NAME, key, prompt)
 
 

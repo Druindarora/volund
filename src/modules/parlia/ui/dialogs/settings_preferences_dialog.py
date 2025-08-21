@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Callable, Any
+from typing import Any, Callable, Optional
 
 from PySide6.QtWidgets import (
     QDialog,
@@ -14,19 +14,19 @@ from PySide6.QtWidgets import (
 )
 from qtpy.QtWidgets import QComboBox
 
-from modules.parlia.i18n.parlia_strings import ParliaStrings
 from modules.parlia.services import parlia_data
+from src.modules.parlia.services.ia_server_service import IaServerService
 
 logger = logging.getLogger(__name__)
 
 
 class PreferencesDialog(QDialog):
-    def __init__(self, parent: Any = None, iaServerService: Optional[Any] = None):
+    def __init__(self, parent: Any = None, iaServerService: Optional[IaServerService] = None):
         super().__init__(parent)
 
         # ⚠️ Si l'appelant ne fournit pas IaServerService, on tente de le récupérer sur le parent.
         if iaServerService is None and hasattr(parent, "iaServerService"):
-            iaServerService = getattr(parent, "iaServerService")
+            iaServerService = parent.iaServerService
 
         # Pas d'exception bloquante : on affichera l'état rouge et on désactivera l'UI si absent.
         if iaServerService is None or not hasattr(iaServerService, "refreshStatus"):
@@ -111,7 +111,10 @@ class PreferencesDialog(QDialog):
         )
         try:
             self.iaServerService.refreshStatus()
-            logger.debug("refreshStatus OK. lastUpdated=%s", getattr(self.iaServerService, "lastUpdated", None))
+            logger.debug(
+                "refreshStatus OK. lastUpdated=%s",
+                getattr(self.iaServerService, "lastUpdated", None),
+            )
 
             # Log de synthèse
             try:
@@ -120,7 +123,9 @@ class PreferencesDialog(QDialog):
                 ollamaAvail = self.iaServerService.getOllamaAvailable()
                 logger.info(
                     "IA server status: overall=%s, whisper.available=%s, ollama.available=%s",
-                    overall, whisperAvail, ollamaAvail
+                    overall,
+                    whisperAvail,
+                    ollamaAvail,
                 )
             except Exception as e:
                 logger.warning("Statut partiel/inattendu reçu depuis /status: %s", e, exc_info=True)
@@ -141,7 +146,9 @@ class PreferencesDialog(QDialog):
             self.serverStatusLabel.setStyleSheet("color: #0a7a1f; font-weight: bold;")
             self.serverStatusLabel.setToolTip("")
         else:
-            self.serverStatusLabel.setText("🔴 Serveur IA injoignable — veuillez le redémarrer manuellement.")
+            self.serverStatusLabel.setText(
+                "🔴 Serveur IA injoignable — veuillez le redémarrer manuellement."
+            )
             self.serverStatusLabel.setStyleSheet("color: #a40000; font-weight: bold;")
             if detail:
                 self.serverStatusLabel.setToolTip(detail)
@@ -167,15 +174,22 @@ class PreferencesDialog(QDialog):
 
         isAvailable = False
         try:
-            isAvailable = bool(self.iaServerService.getWhisperAvailable())
+            isAvailable = (
+                bool(self.iaServerService.getWhisperAvailable())
+                if self.iaServerService is not None
+                else False
+            )
         except Exception as e:
             logger.warning("getWhisperAvailable a échoué: %s", e, exc_info=True)
             isAvailable = False
 
         if isAvailable:
             try:
-                models = self.iaServerService.getWhisperModelList() or []
-                logger.debug("Whisper models: %s", models)
+                if self.iaServerService is not None:
+                    models = self.iaServerService.getWhisperModelList() or []
+                    logger.debug("Whisper models: %s", models)
+                else:
+                    models = []
             except Exception as e:
                 logger.warning("getWhisperModelList a échoué: %s", e, exc_info=True)
                 models = []
@@ -198,8 +212,13 @@ class PreferencesDialog(QDialog):
             # Si pas trouvé localement, fallback au modèle courant du serveur
             if selectedIdx == -1:
                 try:
-                    currentModel = self.iaServerService.getCurrentWhisperModel()
-                    logger.debug("Whisper current model (server): %s", currentModel)
+                    if self.iaServerService is not None:
+                        currentModel = self.iaServerService.getCurrentWhisperModel()
+                        logger.debug("Whisper current model (server): %s", currentModel)
+                    else:
+                        currentModel = ""
+                        logger.debug("Whisper current model (server): aucun (iaServerService=None)")
+
                     if currentModel:
                         selectedIdx = self.whisperModelComboBox.findText(currentModel)
                 except Exception as e:
@@ -219,15 +238,19 @@ class PreferencesDialog(QDialog):
 
         isAvailable = False
         try:
-            isAvailable = bool(self.iaServerService.getOllamaAvailable())
+            if self.iaServerService is not None:
+                isAvailable = bool(self.iaServerService.getOllamaAvailable())
         except Exception as e:
             logger.warning("getOllamaAvailable a échoué: %s", e, exc_info=True)
             isAvailable = False
 
         if isAvailable:
             try:
-                models = self.iaServerService.getOllamaModelList() or []
-                logger.debug("Ollama models: %s", models)
+                if self.iaServerService is not None:
+                    models = self.iaServerService.getOllamaModelList() or []
+                    logger.debug("Ollama models: %s", models)
+                else:
+                    models = []
             except Exception as e:
                 logger.warning("getOllamaModelList a échoué: %s", e, exc_info=True)
                 models = []
@@ -260,13 +283,14 @@ class PreferencesDialog(QDialog):
                 self.iaServerService.selectWhisperModel(modelName)
                 logger.info("Whisper model envoyé au serveur IA: %s", modelName)
             else:
-                logger.warning("Pas de iaServerService disponible pour envoyer le modèle au serveur.")
+                logger.warning(
+                    "Pas de iaServerService disponible pour envoyer le modèle au serveur."
+                )
         except Exception as e:
             logger.error("Erreur lors de la sélection du modèle Whisper: %s", e, exc_info=True)
 
         # Étape 3 : callback UI
         self._notifyModelSelected()
-
 
     def _onCodeModelSelected(self, modelName: str) -> None:
         if not modelName or modelName == "Modèle à choisir":

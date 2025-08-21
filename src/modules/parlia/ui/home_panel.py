@@ -21,7 +21,7 @@
 
 
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -56,11 +56,11 @@ class HomePanel(QWidget):
     def __init__(self, main_window: Optional[QMainWindow] = None):
         super().__init__()
         self.main_window = main_window
-        setattr(self, "module_name", "parlia")
+        self.module_name = "parlia"
         logger.info("[UI] Initialisation du panneau d'accueil Parlia")
 
         # Initialisation de l'état
-        self.selected_files = []
+        self.selected_files: list[Any] = []
 
         # Construction de l'UI
         self._build_ui()
@@ -71,7 +71,7 @@ class HomePanel(QWidget):
             get_transcription_panel=lambda: self.transcription_panel,
         )
 
-    def _build_ui(self):
+    def _build_ui(self) -> None:
         start = time.perf_counter()
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
 
@@ -85,7 +85,6 @@ class HomePanel(QWidget):
         layout = QVBoxLayout()
         layout.setContentsMargins(30, 10, 30, 10)
         layout.setSpacing(10)
-
 
         t0 = time.perf_counter()
         header_row = self._create_title_and_tracker_row()
@@ -130,21 +129,15 @@ class HomePanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 5)  # Réduction de la marge inférieure
 
         # Spacer gauche
-        layout.addItem(
-            QSpacerItem(40, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        )
+        layout.addItem(QSpacerItem(40, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
         # Titre centré
         self.title = QLabel(f"{ModuleInfo.name}")
-        self.title.setFont(
-            QFont("Arial", 22, QFont.Weight.Normal)
-        )  # Taille réduite et Normal
+        self.title.setFont(QFont("Arial", 22, QFont.Weight.Normal))  # Taille réduite et Normal
         layout.addWidget(self.title)
 
         # Spacer centre (entre le titre et le tracker)
-        layout.addItem(
-            QSpacerItem(40, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        )
+        layout.addItem(QSpacerItem(40, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
         # Widget Tracker à droite
         self.tracker_widget = TrackerWidgetPanel()
@@ -190,9 +183,7 @@ class HomePanel(QWidget):
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.action_panel = ActionPanel(
-            transcription_panel=self.transcription_panel, parent=self
-        )
+        self.action_panel = ActionPanel(transcription_panel=self.transcription_panel, parent=self)
         layout.addWidget(self.action_panel)
 
         container.setLayout(layout)

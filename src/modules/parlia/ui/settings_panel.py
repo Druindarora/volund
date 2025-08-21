@@ -1,5 +1,7 @@
 # settings_panel.py
 
+from typing import Optional
+
 import qtawesome as qta
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -13,10 +15,10 @@ from PySide6.QtWidgets import (
 
 from modules.parlia.i18n.parlia_strings import ParliaStrings
 from modules.parlia.services import parlia_data
+from modules.parlia.services.ia_server_service import IaServerService
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
-from modules.parlia.services.ia_server_service import IaServerService
 
 logger = get_logger("SettingsPanel")
 
@@ -38,7 +40,7 @@ class SettingsPanel(QWidget):
 
     # --- Construction UI ---
 
-    def _buildUi(self):
+    def _buildUi(self) -> None:
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
@@ -46,8 +48,8 @@ class SettingsPanel(QWidget):
 
         self.blocks_layout = QHBoxLayout()
 
-        server_block = self._createServerBlock()          # 1) Serveur IA
-        whisper_block = self._createWhisperBlock()        # 2) Whisper
+        server_block = self._createServerBlock()  # 1) Serveur IA
+        whisper_block = self._createWhisperBlock()  # 2) Whisper
         code_assistant_block = self._createCodeAssistantBlock()  # 3) Assistant codage
 
         self.blocks_layout.addWidget(server_block)
@@ -58,9 +60,11 @@ class SettingsPanel(QWidget):
 
         server_block.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         whisper_block.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        code_assistant_block.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        code_assistant_block.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
 
-    def _addHeader(self):
+    def _addHeader(self) -> None:
         header_layout = QHBoxLayout()
 
         title_label = QLabel(ParliaStrings.Home.SETTINGS_TITLE, self)
@@ -80,7 +84,7 @@ class SettingsPanel(QWidget):
 
     # --- Blocs ---
 
-    def _createServerBlock(self):
+    def _createServerBlock(self) -> QWidget:
         """Bloc d'état global du serveur IA (Ollama + Whisper)."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
@@ -115,7 +119,7 @@ class SettingsPanel(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         return widget
 
-    def _createWhisperBlock(self):
+    def _createWhisperBlock(self) -> QWidget:
         """Bloc modèle Whisper."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
@@ -139,7 +143,7 @@ class SettingsPanel(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         return widget
 
-    def _createCodeAssistantBlock(self):
+    def _createCodeAssistantBlock(self) -> QWidget:
         """Bloc modèle Assistant de codage (dépend d’Ollama)."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
@@ -165,7 +169,7 @@ class SettingsPanel(QWidget):
 
     # --- Actions ---
 
-    def openPreferences(self):
+    def openPreferences(self) -> None:
         """Ouvre le PreferencesDialog en lui injectant IaServerService."""
         dlg = PreferencesDialog(self, iaServerService=self.iaServerService)
         dlg.setModelSelectedCallback(self._afterModelSelected)
@@ -173,7 +177,7 @@ class SettingsPanel(QWidget):
 
     # --- Mises à jour de statut ---
 
-    def _setStatus(self, value_label: QLabel, text: str, status_type: str):
+    def _setStatus(self, value_label: QLabel, text: str, status_type: str) -> None:
         """MAJ couleur + texte du label de statut."""
         colors = {
             "ready": "green",
@@ -185,7 +189,7 @@ class SettingsPanel(QWidget):
         value_label.setText(text)
         value_label.setStyleSheet(f"color: {color}; font-weight: bold;")
 
-    def _refreshStatusAndApply(self):
+    def _refreshStatusAndApply(self) -> None:
         """Rafraîchit /status puis met à jour tous les blocs."""
         try:
             self.iaServerService.refreshStatus()
@@ -202,7 +206,7 @@ class SettingsPanel(QWidget):
         self._updateWhisperStatus()
         self._updateCodeStatus()
 
-    def _updateServerStatus(self):
+    def _updateServerStatus(self) -> None:
         """Met à jour les lignes Ollama/Whisper du bloc Serveur IA."""
         # Ollama
         try:
@@ -238,7 +242,7 @@ class SettingsPanel(QWidget):
             logger.error("Erreur update serveur (Whisper): %s", e)
             self._setStatus(self.serverWhisperValue, "Injoignable", "error")
 
-    def _updateWhisperStatus(self):
+    def _updateWhisperStatus(self) -> None:
         """Bloc 2 : affiche le modèle Whisper sélectionné (vert si prêt, sinon gris)."""
         try:
             if self.iaServerService.getWhisperAvailable():
@@ -253,7 +257,7 @@ class SettingsPanel(QWidget):
             logger.error("Erreur update Whisper (modèle): %s", e)
             self._setStatus(self.whisperModelValue, "—", "neutral")
 
-    def _updateCodeStatus(self):
+    def _updateCodeStatus(self) -> None:
         """Bloc 3 : affiche le modèle de codage (vert si Ollama prêt + modèle sélectionné)."""
         try:
             selected = parlia_data.get_code_model()
@@ -287,6 +291,6 @@ class SettingsPanel(QWidget):
 
 # --- Petit helper pour instancier des QLabel colorables proprement ---
 class JLabelColored(QLabel):
-    def __init__(self, text: str = "", parent=None):
+    def __init__(self, text: str = "", parent: Optional[QWidget] = None) -> None:
         super().__init__(text, parent)
         self.setStyleSheet("color: gray; font-weight: bold;")

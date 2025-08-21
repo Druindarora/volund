@@ -1,2 +1,20 @@
 [tool.ruff.lint]
-select = ["F401"]  # F401 = unused imports
+extend-select = ["B", "I"]   # bugbear + import order
+ignore = ["E203"]            # compat Black si tu l'utilises
+fixable = ["ALL"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+disallow_untyped_defs = false
+disallow_subclassing_any = false
+python_executable = ".venv/bin/python"

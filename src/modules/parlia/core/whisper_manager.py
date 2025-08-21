@@ -33,10 +33,10 @@ logger = get_logger("whisper")
 
 logger.setLevel(logging.DEBUG)
 
-_current_model: Optional[whisper.Whisper] = None  # type: Optional[whisper.Whisper]
+_current_model: Optional[whisper.Whisper] = None
 
 
-def load_model(model_path: str):
+def load_model(model_path: str) -> None:
     """
     Charge un modèle Whisper, soit depuis un nom intégré, soit depuis un fichier dans le dossier utilisateur.
     """
@@ -58,17 +58,13 @@ def load_model(model_path: str):
         model_dir = get_model_folder_path()
 
         if not model_dir:
-            logger.error(
-                "Aucun dossier modèle défini dans les préférences utilisateur."
-            )
+            logger.error("Aucun dossier modèle défini dans les préférences utilisateur.")
             return
 
         full_path = Path(model_dir) / model_path
 
         if full_path.exists():
-            logger.info(
-                f"Chargement du modèle Whisper depuis fichier : {full_path.resolve()}"
-            )
+            logger.info(f"Chargement du modèle Whisper depuis fichier : {full_path.resolve()}")
             _current_model = whisper.load_model(str(full_path))
         else:
             logger.error(f"Le modèle spécifié est introuvable : {full_path}")
@@ -78,7 +74,7 @@ def load_model(model_path: str):
     parlia_state.set_whisper_ready(True)
 
 
-def unload_model():
+def unload_model() -> None:
     """
     Décharge le modèle actuellement chargé.
     """

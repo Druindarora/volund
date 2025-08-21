@@ -5,6 +5,7 @@
     "emmet.includeLanguages": {
       "qss": "css"
     },
-    "css.validate": false
+    "css.validate": false,
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
   }
   
