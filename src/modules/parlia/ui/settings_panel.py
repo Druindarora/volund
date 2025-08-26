@@ -1,10 +1,9 @@
 # settings_panel.py
 
-import threading
 from typing import Any, Optional
 
 import qtawesome as qta
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -16,42 +15,92 @@ from PySide6.QtWidgets import (
 
 from modules.parlia.i18n.parlia_strings import ParliaStrings
 from modules.parlia.services import parlia_data
-from modules.parlia.services.ia_server_service import IaServerService
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
-from src.modules.parlia.services.ia_server_ollama_service import IaServerOllamaService
-from src.modules.parlia.services.ia_server_whisper_service import IaServerWhisperService
+from src.modules.parlia.services.ia_server_service import (
+    IaServerService,
+    StatusResponse,
+    ia_server_service,
+)
 
 logger = get_logger("SettingsPanel")
 
 
+class ServerWorker(QObject):
+    statusFetched = Signal(dict)
+    statusFailed = Signal(str)
+    modelSelected = Signal(dict)
+
+    def __init__(self, iaServerService: IaServerService) -> None:
+        super().__init__()
+        self.iaServerService = iaServerService
+        self._statusInFlight = False
+
+    @Slot()
+    def fetchStatus(self) -> None:
+        if self._statusInFlight:
+            return
+        self._statusInFlight = True
+        try:
+            data = self.iaServerService.refreshStatus()
+            self.statusFetched.emit(data)
+        except Exception as e:
+            self.statusFailed.emit(str(e))
+        finally:
+            self._statusInFlight = False
+
+    @Slot(str)
+    def selectWhisperModel(self, modelName: str) -> None:
+        try:
+            info = self.iaServerService.whisper.selectModel(modelName)
+            self.modelSelected.emit(info)
+        except Exception as e:
+            self.statusFailed.emit(str(e))
+
+
 class SettingsPanel(QWidget):
+    # signaux pour déclencher le worker (connexion inter-threads automatique)
+    requestFetchStatus = Signal()
+    requestSelectWhisperModel = Signal(str)
+
     def __init__(self, update_record_callback=None, parent=None):
         super().__init__(parent)
         self.update_record_callback = update_record_callback
 
-        # Service unique IA
-        self.iaServerService = IaServerService("http://192.168.0.25:8000")
-        self.iaServerWhisperService = IaServerWhisperService("http://192.168.0.25:8000")
-        self.iaServerOllamaService = IaServerOllamaService("http://192.168.0.25:8000")
+        # Façade unique + sous-services partagés
+        self.iaServerService = ia_server_service
 
-        # État local pour la sélection Whisper
-        self.lastWhisperSelect: Optional[dict[str, Any]] = (
-            None  # contient potentiellement {state,current,requested}
-        )
+        # Thread + worker réseau non bloquants
+        self._workerThread = QThread(self)
+        self._worker = ServerWorker(self.iaServerService)
+        self._worker.moveToThread(self._workerThread)
+
+        # Connexions worker → UI
+        self._worker.statusFetched.connect(self._onStatusFetched)
+        self._worker.statusFailed.connect(self._onStatusFailed)
+        self._worker.modelSelected.connect(self._onModelSelected)
+
+        # Connexions UI → worker (queued, thread-safe)
+        self.requestFetchStatus.connect(self._worker.fetchStatus)
+        self.requestSelectWhisperModel.connect(self._worker.selectWhisperModel)
+
+        self._workerThread.start()
+
+        # État local Whisper
+        self.lastWhisperSelect: Optional[dict[str, Any]] = None
         self.whisperPollingTimer = QTimer(self)
-        self.whisperPollingTimer.setInterval(1500)
+        self.whisperPollingTimer.setInterval(3000)  # 3s
         self.whisperPollingTimer.timeout.connect(self._pollWhisperReady)
 
         # UI
         self._buildUi()
         load_qss_for(self)
 
-        # Init statuts (unique point d’entrée)
+        # Init statuts (asynchrone)
         self._refreshStatusAndApply()
 
-        # Sélectionne le modèle Whisper sauvegardé au démarrage (sans bloquer l'UI)
+        # Sélection Whisper sauvegardée (asynchrone)
         self._initWhisperSelection()
 
     # --- Construction UI ---
@@ -64,9 +113,9 @@ class SettingsPanel(QWidget):
 
         self.blocks_layout = QHBoxLayout()
 
-        server_block = self._createServerBlock()  # 1) Serveur IA
-        whisper_block = self._createWhisperBlock()  # 2) Whisper
-        code_assistant_block = self._createCodeAssistantBlock()  # 3) Assistant codage
+        server_block = self._createServerBlock()
+        whisper_block = self._createWhisperBlock()
+        code_assistant_block = self._createCodeAssistantBlock()
 
         self.blocks_layout.addWidget(server_block)
         self.blocks_layout.addWidget(whisper_block)
@@ -101,7 +150,6 @@ class SettingsPanel(QWidget):
     # --- Blocs ---
 
     def _createServerBlock(self) -> QWidget:
-        """Bloc d'état global du serveur IA (Ollama + Whisper)."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
@@ -109,7 +157,6 @@ class SettingsPanel(QWidget):
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(title)
 
-        # Ligne Ollama
         ollama_row = QHBoxLayout()
         ollama_label = QLabel("Ollama :")
         ollama_label.setStyleSheet("color: white; font-weight: bold;")
@@ -120,7 +167,6 @@ class SettingsPanel(QWidget):
         ollama_row.addStretch()
         layout.addLayout(ollama_row)
 
-        # Ligne Whisper
         whisper_row = QHBoxLayout()
         whisper_label = QLabel("Whisper :")
         whisper_label.setStyleSheet("color: white; font-weight: bold;")
@@ -136,7 +182,6 @@ class SettingsPanel(QWidget):
         return widget
 
     def _createWhisperBlock(self) -> QWidget:
-        """Bloc modèle Whisper."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
@@ -160,7 +205,6 @@ class SettingsPanel(QWidget):
         return widget
 
     def _createCodeAssistantBlock(self) -> QWidget:
-        """Bloc modèle Assistant de codage (dépend d’Ollama)."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
@@ -186,7 +230,6 @@ class SettingsPanel(QWidget):
     # --- Actions ---
 
     def openPreferences(self) -> None:
-        """Ouvre le PreferencesDialog en lui injectant IaServerService."""
         dlg = PreferencesDialog(self, iaServerService=self.iaServerService)
         dlg.setModelSelectedCallback(self._afterModelSelected)
         dlg.exec_()
@@ -194,41 +237,27 @@ class SettingsPanel(QWidget):
     # --- Mises à jour de statut ---
 
     def _setStatus(self, value_label: QLabel, text: str, status_type: str) -> None:
-        """MAJ couleur + texte du label de statut."""
-        colors = {
-            "ready": "green",
-            "error": "red",
-            "warning": "orange",
-            "neutral": "gray",
-        }
+        colors = {"ready": "green", "error": "red", "warning": "orange", "neutral": "gray"}
         color = colors.get(status_type, "white")
         value_label.setText(text)
         value_label.setStyleSheet(f"color: {color}; font-weight: bold;")
 
     def _refreshStatusAndApply(self) -> None:
-        """Rafraîchit /status puis met à jour tous les blocs."""
-        try:
-            self.iaServerService.refreshStatus()
-        except Exception as e:
-            # Serveur injoignable : on affiche l’état rouge partout pertinent
-            logger.error("Échec refreshStatus dans SettingsPanel: %s", e)
-            self._setStatus(self.serverOllamaValue, "Injoignable", "error")
-            self._setStatus(self.serverWhisperValue, "Injoignable", "error")
-            self._setStatus(self.whisperModelValue, "—", "neutral")
-            self._setStatus(self.codeModelValue, "Injoignable", "error")
-            return
+        # asynchrone via worker
+        self.requestFetchStatus.emit()
 
-        self._updateServerStatus()
-        self._updateWhisperStatus()
-        self._updateCodeStatus()
+    def _status(self) -> StatusResponse:
+        return self.iaServerService.getStatus()
 
     def _updateServerStatus(self) -> None:
-        """Met à jour les lignes Ollama/Whisper du bloc Serveur IA."""
+        status = self._status()
+
         # Ollama
         try:
-            ollama_available = bool(self.iaServerService.getOllamaAvailable())
-            if ollama_available:
-                state = (self.iaServerService.getOllamaState() or "").lower()
+            oll = status["services"]["ollama"]
+            oll_available = bool(oll["available"])
+            if oll_available:
+                state = (oll["state"] or "").lower()
                 if state in ("ready", "running", "idle"):
                     self._setStatus(self.serverOllamaValue, "prêt", "ready")
                 elif state in ("starting", "loading", "pending"):
@@ -236,7 +265,6 @@ class SettingsPanel(QWidget):
                 else:
                     self._setStatus(self.serverOllamaValue, "erreur", "error")
             else:
-                # Non lancé / pas disponible
                 self._setStatus(self.serverOllamaValue, "en attente", "warning")
         except Exception as e:
             logger.error("Erreur update serveur (Ollama): %s", e)
@@ -244,13 +272,13 @@ class SettingsPanel(QWidget):
 
         # Whisper
         try:
-            whisper_available = bool(self.iaServerService.getWhisperAvailable())
+            wh = status["services"]["whisper"]
+            whisper_available = bool(wh["available"])
             if whisper_available:
-                state = (self.iaServerService.getWhisperState() or "").lower()
+                state = (wh["state"] or "").lower()
                 if state in ("ready", "running", "idle"):
                     self._setStatus(self.serverWhisperValue, "prêt", "ready")
                 else:
-                    # Spécification: pas d’“en attente” pour Whisper dans ce bloc
                     self._setStatus(self.serverWhisperValue, "erreur", "error")
             else:
                 self._setStatus(self.serverWhisperValue, "non disponible", "neutral")
@@ -259,11 +287,14 @@ class SettingsPanel(QWidget):
             self._setStatus(self.serverWhisperValue, "Injoignable", "error")
 
     def _updateWhisperStatus(self) -> None:
-        """Bloc 2 : affiche le modèle Whisper sélectionné et l’état de chargement."""
+        status = self._status()
         try:
-            if self.iaServerService.getWhisperAvailable():
-                current = self.iaServerService.getCurrentWhisperModel() or "—"
-                state = (self.iaServerService.getWhisperState() or "").lower()
+            wh = status["services"]["whisper"]
+            if wh["available"]:
+                models = wh["models"]
+                current = models["current"] or "—"
+                state = (wh["state"] or "").lower()
+
                 requested = ""
                 if self.lastWhisperSelect:
                     req = self.lastWhisperSelect.get("requested")
@@ -271,7 +302,6 @@ class SettingsPanel(QWidget):
                         requested = req
 
                 if state == "loading" and requested and requested != current:
-                    # Affiche "current (chargement → requested)" en orange
                     self._setStatus(
                         self.whisperModelValue,
                         f"{current} (chargement → {requested})",
@@ -279,10 +309,11 @@ class SettingsPanel(QWidget):
                     )
                     self._startWhisperPolling()
                 elif state == "ready":
-                    self._setStatus(self.whisperModelValue, current, "ready")
+                    self._setStatus(self.whisperModelValue, str(current), "ready")
                     self._stopWhisperPolling()
                 else:
-                    self._setStatus(self.whisperModelValue, current or "—", "neutral")
+                    self._stopWhisperPolling()
+                    self._setStatus(self.whisperModelValue, str(current) or "—", "neutral")
             else:
                 self._setStatus(self.whisperModelValue, "—", "neutral")
         except Exception as e:
@@ -290,14 +321,14 @@ class SettingsPanel(QWidget):
             self._setStatus(self.whisperModelValue, "—", "neutral")
 
     def _updateCodeStatus(self) -> None:
-        """Bloc 3 : affiche le modèle de codage (vert si Ollama prêt + modèle sélectionné)."""
+        status = self._status()
         try:
             selected = parlia_data.get_code_model()
             try:
-                available = bool(self.iaServerService.getOllamaAvailable())
-                state = (self.iaServerService.getOllamaState() or "").lower() if available else ""
+                oll = status["services"]["ollama"]
+                available = bool(oll["available"])
+                state = (oll["state"] or "").lower() if available else ""
             except Exception:
-                # Injoignable
                 self._setStatus(self.codeModelValue, "Injoignable", "error")
                 return
 
@@ -306,16 +337,38 @@ class SettingsPanel(QWidget):
             elif not available:
                 self._setStatus(self.codeModelValue, selected or "—", "neutral")
             else:
-                # Ollama dispo mais pas prêt, ou pas de modèle sélectionné
                 self._setStatus(self.codeModelValue, selected or "—", "neutral")
         except Exception as e:
             logger.error("Erreur update Code (modèle): %s", e)
             self._setStatus(self.codeModelValue, "—", "neutral")
 
+    # --- Slots worker → UI ---
+
+    @Slot(dict)
+    def _onStatusFetched(self, _data: dict[str, Any]) -> None:
+        self._updateServerStatus()
+        self._updateWhisperStatus()
+        self._updateCodeStatus()
+
+    @Slot(str)
+    def _onStatusFailed(self, _msg: str) -> None:
+        self._stopWhisperPolling()
+        self._setStatus(self.serverOllamaValue, "Injoignable", "error")
+        self._setStatus(self.serverWhisperValue, "Injoignable", "error")
+        self._setStatus(self.whisperModelValue, "—", "neutral")
+        self._setStatus(self.codeModelValue, "Injoignable", "error")
+
+    @Slot(dict)
+    def _onModelSelected(self, info: dict[str, Any]) -> None:
+        self.lastWhisperSelect = info or {}
+        self._updateWhisperStatus()
+        self._startWhisperPolling()
+        # déclenche un refresh async pour refléter l'état 'loading' → 'ready'
+        self.requestFetchStatus.emit()
+
     # --- Callbacks ---
 
     def _afterModelSelected(self):
-        """Callback déclenché depuis PreferencesDialog après sélection modèle."""
         self._refreshStatusAndApply()
         if self.update_record_callback:
             self.update_record_callback()
@@ -323,48 +376,42 @@ class SettingsPanel(QWidget):
     # --- Init sélection Whisper + polling ---
 
     def _initWhisperSelection(self) -> None:
-        """Lance la sélection du modèle Whisper sauvegardé, sans bloquer l'UI."""
         saved = parlia_data.get_whisper_model()
         if not saved:
             return
-        # Lancer la requête POST en thread pour éviter de bloquer l'UI
-        t = threading.Thread(target=self._asyncSelectWhisper, args=(saved,), daemon=True)
-        t.start()
-        # Démarre le polling immédiat (au cas où l'état passe à 'loading')
+        self.requestSelectWhisperModel.emit(saved)
         self._startWhisperPolling()
 
-    def _asyncSelectWhisper(self, modelName: str) -> None:
-        """Thread: POST /whisper/select et mémorise la réponse."""
-        try:
-            info = self.iaServerService.selectWhisperModel(modelName)
-            # Mémorise la dernière réponse (peut contenir state/current/requested)
-            self.lastWhisperSelect = info or {}
-        except Exception as e:
-            logger.warning("selectWhisperModel a échoué: %s", e, exc_info=True)
-
     def _startWhisperPolling(self) -> None:
-        """Démarre le polling périodique de /status jusqu'à 'ready'."""
-        if not self.whisperPollingTimer.isActive():
-            self.whisperPollingTimer.start()
+        if not getattr(self, "_pollingScheduled", False):
+            self._pollingScheduled = True
+            QTimer.singleShot(3000, self._pollOnce)
+
+    def _pollOnce(self) -> None:
+        self._pollingScheduled = False
+        self.requestFetchStatus.emit()
 
     def _stopWhisperPolling(self) -> None:
-        """Arrête le polling."""
         if self.whisperPollingTimer.isActive():
             self.whisperPollingTimer.stop()
 
     def _pollWhisperReady(self) -> None:
-        """Tick de polling: rafraîchit les statuts et s'arrête si Whisper est prêt."""
+        # tick → refresh async
+        self.requestFetchStatus.emit()
+
+    # --- Lifecycle ---
+
+    def closeEvent(self, event):
         try:
-            self.iaServerService.refreshStatus()
-        except Exception as e:
-            logger.error("Polling Whisper: refreshStatus a échoué: %s", e)
-            # On laisse l'UI refléter l'état actuel
-        self._updateServerStatus()
-        self._updateWhisperStatus()
-        self._updateCodeStatus()
+            self._stopWhisperPolling()
+            self._workerThread.quit()
+            self._workerThread.wait()
+        except Exception:
+            pass
+        super().closeEvent(event)
 
 
-# --- Petit helper pour instancier des QLabel colorables proprement ---
+# --- QLabel colorable ---
 class JLabelColored(QLabel):
     def __init__(self, text: str = "", parent: Optional[QWidget] = None) -> None:
         super().__init__(text, parent)

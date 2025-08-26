@@ -9,6 +9,8 @@ import requests
 
 from src.core.logger_manager import get_logger
 
+from .ia_server_types import StatusResponse
+
 
 class IaServerWhisperService:
     def __init__(
@@ -16,16 +18,16 @@ class IaServerWhisperService:
         baseUrl: str,
         timeout: float = 30.0,
         session: Optional[requests.Session] = None,
-        statusProvider: Optional[Callable[[], dict[str, Any]]] = None,
+        statusProvider: Optional[Callable[[], StatusResponse]] = None,
     ) -> None:
         self.baseUrl: str = baseUrl.rstrip("/")
         self.timeout: float = timeout
         self.session: requests.Session = session or requests.Session()
-        self._statusProvider: Optional[Callable[[], dict[str, Any]]] = statusProvider
+        self._statusProvider: Optional[Callable[[], StatusResponse]] = statusProvider
         self._executor = ThreadPoolExecutor(max_workers=2)
         self.logger = get_logger("IaServerWhisperService")
 
-    def _getStatus(self) -> dict[str, Any]:
+    def _getStatus(self) -> StatusResponse:
         if self._statusProvider:
             return self._statusProvider()
         try:
@@ -34,7 +36,7 @@ class IaServerWhisperService:
             data: Any = r.json()
             if not isinstance(data, dict):
                 raise RuntimeError("Réponse /status inattendue (type non dict)")
-            return cast(dict[str, Any], data)
+            return cast(StatusResponse, data)
         except requests.RequestException as e:
             self.logger.error(f"[Whisper] /status HTTP error: {e}")
             raise RuntimeError(str(e)) from e
@@ -63,11 +65,12 @@ class IaServerWhisperService:
 
     def getAvailableModels(self) -> list[str]:
         status = self._getStatus()
-        return list(status.get("whisper", {}).get("models", []))
+        downloaded = status["services"]["whisper"]["models"]["downloaded"]
+        return list(downloaded)
 
     def getCurrentModel(self) -> str:
         status = self._getStatus()
-        return str(status.get("whisper", {}).get("current", ""))
+        return str(status["services"]["whisper"]["models"]["current"])
 
     def transcribe(self, filePath: str) -> dict[str, Any]:
         if not os.path.exists(filePath):
@@ -101,12 +104,12 @@ class IaServerWhisperService:
             try:
                 result: dict[str, Any] = _fut.result()
             except Exception as e:
-                self.logger.error(f"[Whisper] transcribe_async erreur: {e}")
+                self.logger.exception(f"[Whisper] transcribe_async erreur: {e}")
                 result = {"error": str(e)}
             try:
                 callback(result)
             except Exception as e:
-                self.logger.error(f"[Whisper] callback erreur: {e}")
+                self.logger.exception(f"[Whisper] callback erreur: {e}")
 
         future.add_done_callback(_done)
 
@@ -114,10 +117,4 @@ class IaServerWhisperService:
         self._executor.shutdown(wait=False, cancel_futures=True)
 
 
-# ✅ Singleton global pour import: `from ...ia_server_whisper_service import ia_server_whisper_service`
-IA_SERVER_BASE_URL = os.getenv("IA_SERVER_BASE_URL", "http://127.0.0.1:8000")
-IA_SERVER_TIMEOUT = float(os.getenv("IA_SERVER_TIMEOUT", "30"))
-ia_server_whisper_service: IaServerWhisperService = IaServerWhisperService(
-    baseUrl=IA_SERVER_BASE_URL,
-    timeout=IA_SERVER_TIMEOUT,
-)
+# ⛔️ Pas de singleton ici. Utiliser ia_server_service.whisper

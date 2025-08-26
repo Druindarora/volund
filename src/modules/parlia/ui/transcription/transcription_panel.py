@@ -20,7 +20,7 @@ from modules.parlia.ui.dialogs.transcription_settings_dialog import (
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
 from src.modules.parlia.services.audioService import audio_service
-from src.modules.parlia.services.ia_server_whisper_service import ia_server_whisper_service
+from src.modules.parlia.services.ia_server_service import ia_server_service
 from src.modules.parlia.ui.transcription.controls_panel import ControlsPanel
 from src.modules.parlia.ui.transcription.conversation_panel import ConversationPanel
 
@@ -97,7 +97,7 @@ class TranscriptionPanel(QWidget):
 
     def closeEvent(self, event):
         try:
-            ia_server_whisper_service.cleanup()
+            ia_server_service.cleanup()
         except Exception as e:
             logger.error(f"[TranscriptionPanel] cleanup error: {e}")
         super().closeEvent(event)
@@ -114,7 +114,7 @@ class TranscriptionPanel(QWidget):
         # Lance la transcription uniquement quand le fichier est prêt
         if not filePath:
             return
-        ia_server_whisper_service.transcribe_async(
+        ia_server_service.whisper.transcribe_async(
             filePath,
             callback=self._onTranscriptionDone,
         )
