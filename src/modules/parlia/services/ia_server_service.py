@@ -83,7 +83,7 @@ class IaServerService:
 
 
 # ✅ Singleton global façade
-IA_SERVER_BASE_URL = os.getenv("IA_SERVER_BASE_URL", "http://192.0.0.25:8000")
+IA_SERVER_BASE_URL = os.getenv("IA_SERVER_BASE_URL", "http://192.168.0.25:8000")
 IA_SERVER_TIMEOUT = float(os.getenv("IA_SERVER_TIMEOUT", "30"))
 _shared_session = requests.Session()
 ia_server_service: IaServerService = IaServerService(

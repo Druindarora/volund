@@ -1,9 +1,13 @@
 # settings_panel.py
+from __future__ import annotations
 
-from typing import Any, Optional
+import json
+from typing import Any, Callable, Optional, cast
 
 import qtawesome as qta
-from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
+from PySide6.QtCore import Qt, QTimer, QUrl, Slot
+from PySide6.QtGui import QCloseEvent
+from PySide6.QtWebSockets import QWebSocket
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -18,89 +22,41 @@ from modules.parlia.services import parlia_data
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
-from src.modules.parlia.services.ia_server_service import (
-    IaServerService,
-    StatusResponse,
-    ia_server_service,
-)
+from src.modules.parlia.services.ia_server_service import IaServerService, ia_server_service
+from src.modules.parlia.services.ia_server_types import StatusResponse
 
 logger = get_logger("SettingsPanel")
 
 
-class ServerWorker(QObject):
-    statusFetched = Signal(dict)
-    statusFailed = Signal(str)
-    modelSelected = Signal(dict)
-
-    def __init__(self, iaServerService: IaServerService) -> None:
-        super().__init__()
-        self.iaServerService = iaServerService
-        self._statusInFlight = False
-
-    @Slot()
-    def fetchStatus(self) -> None:
-        if self._statusInFlight:
-            return
-        self._statusInFlight = True
-        try:
-            data = self.iaServerService.refreshStatus()
-            self.statusFetched.emit(data)
-        except Exception as e:
-            self.statusFailed.emit(str(e))
-        finally:
-            self._statusInFlight = False
-
-    @Slot(str)
-    def selectWhisperModel(self, modelName: str) -> None:
-        try:
-            info = self.iaServerService.whisper.selectModel(modelName)
-            self.modelSelected.emit(info)
-        except Exception as e:
-            self.statusFailed.emit(str(e))
-
-
 class SettingsPanel(QWidget):
-    # signaux pour déclencher le worker (connexion inter-threads automatique)
-    requestFetchStatus = Signal()
-    requestSelectWhisperModel = Signal(str)
-
-    def __init__(self, update_record_callback=None, parent=None):
+    def __init__(
+        self,
+        update_record_callback: Optional[Callable[[], None]] = None,
+        parent: Optional[QWidget] = None,
+    ) -> None:
         super().__init__(parent)
         self.update_record_callback = update_record_callback
 
-        # Façade unique + sous-services partagés
-        self.iaServerService = ia_server_service
+        # Façade unique
+        self.iaServerService: IaServerService = ia_server_service
 
-        # Thread + worker réseau non bloquants
-        self._workerThread = QThread(self)
-        self._worker = ServerWorker(self.iaServerService)
-        self._worker.moveToThread(self._workerThread)
-
-        # Connexions worker → UI
-        self._worker.statusFetched.connect(self._onStatusFetched)
-        self._worker.statusFailed.connect(self._onStatusFailed)
-        self._worker.modelSelected.connect(self._onModelSelected)
-
-        # Connexions UI → worker (queued, thread-safe)
-        self.requestFetchStatus.connect(self._worker.fetchStatus)
-        self.requestSelectWhisperModel.connect(self._worker.selectWhisperModel)
-
-        self._workerThread.start()
-
-        # État local Whisper
+        # Cache dernier statut WS
+        self._lastStatus: Optional[StatusResponse] = None
         self.lastWhisperSelect: Optional[dict[str, Any]] = None
-        self.whisperPollingTimer = QTimer(self)
-        self.whisperPollingTimer.setInterval(3000)  # 3s
-        self.whisperPollingTimer.timeout.connect(self._pollWhisperReady)
 
         # UI
         self._buildUi()
         load_qss_for(self)
 
-        # Init statuts (asynchrone)
-        self._refreshStatusAndApply()
+        # WebSocket statut serveur
+        self.socket = QWebSocket()
+        self.socket.connected.connect(self._onConnected)
+        self.socket.disconnected.connect(self._onDisconnected)
+        self.socket.textMessageReceived.connect(self._onMessage)
+        self._wsUrl: str = self._computeWsUrl()
+        self._openSocket()
 
-        # Sélection Whisper sauvegardée (asynchrone)
+        # Sélection Whisper sauvegardée (synchrone HTTP, évènement WS attendu ensuite)
         self._initWhisperSelection()
 
     # --- Construction UI ---
@@ -237,20 +193,21 @@ class SettingsPanel(QWidget):
     # --- Mises à jour de statut ---
 
     def _setStatus(self, value_label: QLabel, text: str, status_type: str) -> None:
-        colors = {"ready": "green", "error": "red", "warning": "orange", "neutral": "gray"}
+        # couleurs simples pour feedback visuel
+        colors: dict[str, str] = {
+            "ready": "green",
+            "error": "red",
+            "warning": "orange",
+            "neutral": "gray",
+        }
         color = colors.get(status_type, "white")
         value_label.setText(text)
         value_label.setStyleSheet(f"color: {color}; font-weight: bold;")
 
-    def _refreshStatusAndApply(self) -> None:
-        # asynchrone via worker
-        self.requestFetchStatus.emit()
-
-    def _status(self) -> StatusResponse:
-        return self.iaServerService.getStatus()
-
     def _updateServerStatus(self) -> None:
-        status = self._status()
+        if self._lastStatus is None:
+            return
+        status = self._lastStatus
 
         # Ollama
         try:
@@ -273,55 +230,52 @@ class SettingsPanel(QWidget):
         # Whisper
         try:
             wh = status["services"]["whisper"]
-            whisper_available = bool(wh["available"])
-            if whisper_available:
-                state = (wh["state"] or "").lower()
-                if state in ("ready", "running", "idle"):
-                    self._setStatus(self.serverWhisperValue, "prêt", "ready")
-                else:
-                    self._setStatus(self.serverWhisperValue, "erreur", "error")
+            logger.debug(f"[Whisper] state={wh.get('state')} available={wh.get('available')}")
+            state = str(wh.get("state", "")).lower()
+            available = bool(wh.get("available", False))
+
+            if state in ("loading", "starting", "pending"):
+                # Pendant un chargement on n'affiche PAS "non disponible"
+                self._setStatus(self.serverWhisperValue, "en attente", "warning")
+            elif state == "ready" and available:
+                self._setStatus(self.serverWhisperValue, "prêt", "ready")
+            elif state == "error":
+                self._setStatus(self.serverWhisperValue, "erreur", "error")
             else:
+                # Seulement si pas de loading et pas ready → "non disponible"
                 self._setStatus(self.serverWhisperValue, "non disponible", "neutral")
         except Exception as e:
             logger.error("Erreur update serveur (Whisper): %s", e)
             self._setStatus(self.serverWhisperValue, "Injoignable", "error")
 
     def _updateWhisperStatus(self) -> None:
-        status = self._status()
+        if self._lastStatus is None:
+            return
+        status = self._lastStatus
         try:
             wh = status["services"]["whisper"]
-            if wh["available"]:
-                models = wh["models"]
-                current = models["current"] or "—"
-                state = (wh["state"] or "").lower()
+            models = wh.get("models", {})
+            current = (models.get("current") if isinstance(models, dict) else None) or "—"
+            state = (wh.get("state") or "").lower()
 
-                requested = ""
-                if self.lastWhisperSelect:
-                    req = self.lastWhisperSelect.get("requested")
-                    if isinstance(req, str):
-                        requested = req
-
-                if state == "loading" and requested and requested != current:
-                    self._setStatus(
-                        self.whisperModelValue,
-                        f"{current} (chargement → {requested})",
-                        "warning",
-                    )
-                    self._startWhisperPolling()
-                elif state == "ready":
-                    self._setStatus(self.whisperModelValue, str(current), "ready")
-                    self._stopWhisperPolling()
-                else:
-                    self._stopWhisperPolling()
-                    self._setStatus(self.whisperModelValue, str(current) or "—", "neutral")
+            if state == "ready":
+                self._setStatus(self.whisperModelValue, str(current), "ready")
+            elif state in ("loading", "starting", "pending"):
+                self._setStatus(self.whisperModelValue, f"{current} (chargement…)", "warning")
+            elif state == "error":
+                self._setStatus(self.whisperModelValue, str(current) or "—", "error")
             else:
+                # fallback si vraiment pas d'état
                 self._setStatus(self.whisperModelValue, "—", "neutral")
+
         except Exception as e:
             logger.error("Erreur update Whisper (modèle): %s", e)
             self._setStatus(self.whisperModelValue, "—", "neutral")
 
     def _updateCodeStatus(self) -> None:
-        status = self._status()
+        if self._lastStatus is None:
+            return
+        status = self._lastStatus
         try:
             selected = parlia_data.get_code_model()
             try:
@@ -342,70 +296,71 @@ class SettingsPanel(QWidget):
             logger.error("Erreur update Code (modèle): %s", e)
             self._setStatus(self.codeModelValue, "—", "neutral")
 
-    # --- Slots worker → UI ---
+    # --- WebSocket helpers ---
 
-    @Slot(dict)
-    def _onStatusFetched(self, _data: dict[str, Any]) -> None:
-        self._updateServerStatus()
-        self._updateWhisperStatus()
-        self._updateCodeStatus()
+    def _computeWsUrl(self) -> str:
+        base = getattr(self.iaServerService, "baseUrl", "http://127.0.0.1:8000")
+        if base.startswith("https://"):
+            return f"wss://{base[len('https://') :]}/ws/status"
+        if base.startswith("http://"):
+            return f"ws://{base[len('http://') :]}/ws/status"
+        return f"ws://{base}/ws/status"
+
+    def _openSocket(self) -> None:
+        self.socket.open(QUrl(self._wsUrl))
+
+    @Slot()
+    def _onConnected(self) -> None:
+        logger.info("✅ WebSocket connecté au serveur IA")
+
+    @Slot()
+    def _onDisconnected(self) -> None:
+        logger.warning("⚠️ WebSocket déconnecté, tentative de reconnexion…")
+        QTimer.singleShot(3000, self._openSocket)
 
     @Slot(str)
-    def _onStatusFailed(self, _msg: str) -> None:
-        self._stopWhisperPolling()
-        self._setStatus(self.serverOllamaValue, "Injoignable", "error")
-        self._setStatus(self.serverWhisperValue, "Injoignable", "error")
-        self._setStatus(self.whisperModelValue, "—", "neutral")
-        self._setStatus(self.codeModelValue, "Injoignable", "error")
+    def _onMessage(self, message: str) -> None:
+        logger.debug(f"📩 WS message brut: {message}")
+        try:
+            dataAny: Any = json.loads(message)
+            logger.debug(f"📩 WS data parsed: {dataAny}")
+            if not isinstance(dataAny, dict):
+                return
 
-    @Slot(dict)
-    def _onModelSelected(self, info: dict[str, Any]) -> None:
-        self.lastWhisperSelect = info or {}
-        self._updateWhisperStatus()
-        self._startWhisperPolling()
-        # déclenche un refresh async pour refléter l'état 'loading' → 'ready'
-        self.requestFetchStatus.emit()
+            # Snapshot complet du statut
+            if "services" in dataAny:
+                self._lastStatus = cast(StatusResponse, dataAny)
+                self._updateServerStatus()
+                self._updateWhisperStatus()
+                self._updateCodeStatus()
+        except Exception as e:
+            logger.error("Erreur parsing WS: %s", e)
 
     # --- Callbacks ---
 
-    def _afterModelSelected(self):
-        self._refreshStatusAndApply()
+    def _afterModelSelected(self) -> None:
         if self.update_record_callback:
             self.update_record_callback()
 
-    # --- Init sélection Whisper + polling ---
+    # --- Init sélection Whisper ---
 
     def _initWhisperSelection(self) -> None:
         saved = parlia_data.get_whisper_model()
         if not saved:
             return
-        self.requestSelectWhisperModel.emit(saved)
-        self._startWhisperPolling()
-
-    def _startWhisperPolling(self) -> None:
-        if not getattr(self, "_pollingScheduled", False):
-            self._pollingScheduled = True
-            QTimer.singleShot(3000, self._pollOnce)
-
-    def _pollOnce(self) -> None:
-        self._pollingScheduled = False
-        self.requestFetchStatus.emit()
-
-    def _stopWhisperPolling(self) -> None:
-        if self.whisperPollingTimer.isActive():
-            self.whisperPollingTimer.stop()
-
-    def _pollWhisperReady(self) -> None:
-        # tick → refresh async
-        self.requestFetchStatus.emit()
+        # envoi au serveur, l’UI sera mise à jour par WS ensuite
+        try:
+            info = self.iaServerService.whisper.selectModel(saved)
+            self.lastWhisperSelect = info or {}
+            self._setStatus(self.whisperModelValue, "chargement…", "warning")
+        except Exception as e:
+            logger.warning("Sélection Whisper initiale échouée: %s", e)
 
     # --- Lifecycle ---
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         try:
-            self._stopWhisperPolling()
-            self._workerThread.quit()
-            self._workerThread.wait()
+            self.socket.close()
         except Exception:
             pass
         super().closeEvent(event)
