@@ -1,4 +1,3 @@
-# settings_panel.py
 from __future__ import annotations
 
 import json
@@ -17,10 +16,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from modules.parlia.core.app_state_manager import AppStateManager
 from modules.parlia.i18n.parlia_strings import ParliaStrings
 from modules.parlia.services import parlia_data
 from modules.parlia.ui.dialogs.settings_preferences_dialog import PreferencesDialog
-from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
 from src.modules.parlia.services.ia_server_service import IaServerService, ia_server_service
 from src.modules.parlia.services.ia_server_types import StatusResponse
@@ -29,6 +28,15 @@ logger = get_logger("SettingsPanel")
 
 
 class SettingsPanel(QWidget):
+    """Panneau des statuts et préférences.
+
+    Intégration AppStateManager :
+      - Reçoit les snapshots WS, les transmet au StateManager (source de vérité côté client).
+      - Met l'UI à jour sur les signaux du StateManager (servicesUpdated/serviceStatusChanged).
+      - Optimisme contrôlé lors d'une sélection de modèle Whisper (HTTP) pour bloquer l'enregistrement
+        tant que le WS ne confirme pas (voir _initWhisperSelection).
+    """
+
     def __init__(
         self,
         update_record_callback: Optional[Callable[[], None]] = None,
@@ -40,13 +48,18 @@ class SettingsPanel(QWidget):
         # Façade unique
         self.iaServerService: IaServerService = ia_server_service
 
-        # Cache dernier statut WS
+        # StateManager (singleton)
+        self.stateManager = AppStateManager()
+
+        # Cache dernier statut WS (brut)
         self._lastStatus: Optional[StatusResponse] = None
         self.lastWhisperSelect: Optional[dict[str, Any]] = None
 
         # UI
         self._buildUi()
-        load_qss_for(self)
+        self._connectStateSignals()
+        self._applyInitialUiFromState()
+        self._loadStyles()
 
         # WebSocket statut serveur
         self.socket = QWebSocket()
@@ -183,14 +196,118 @@ class SettingsPanel(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         return widget
 
-    # --- Actions ---
+    # --- Connexions / StateManager ---
+
+    def _connectStateSignals(self) -> None:
+        # Mises à jour globales des services
+        self.stateManager.servicesUpdated.connect(self._onServicesUpdated)
+        # Si besoin d'un rafraîchissement fin par service :
+        self.stateManager.serviceStatusChanged.connect(self._onServiceStatusChanged)
+
+    def _applyInitialUiFromState(self) -> None:
+        # Applique les infos déjà connues (par ex. si SettingsPanel est créé après premières updates)
+        services = {k: v.toDict() for k, v in self.stateManager.services().items()}
+        self._renderServices(services)
+
+    def _loadStyles(self) -> None:
+        # Styles externes (si nécessaire). Ici on garde simple pour éviter les dépendances circulaires.
+        try:
+            from modules.parlia.utils.stylesheet_loader import load_qss_for
+
+            load_qss_for(self)
+        except Exception:
+            pass
+
+    # --- Rendu UI à partir des services ---
+
+    @Slot(dict)
+    def _onServicesUpdated(self, services: dict[str, Any]) -> None:
+        self._renderServices(services)
+
+    @Slot(str, dict)
+    def _onServiceStatusChanged(self, name: str, status: dict[str, Any]) -> None:
+        # Mise à jour ciblée si besoin (ici on rerend tout pour simplicité et cohérence de couleurs)
+        self._renderServices({k: v.toDict() for k, v in self.stateManager.services().items()})
+
+    def _renderServices(self, services: dict[str, Any]) -> None:
+        """Met à jour les trois blocs (Serveur, Whisper Model, Code Model) à partir d'un snapshot services."""
+        try:
+            whisper = cast(dict[str, Any], services.get("whisper", {}))
+            ollama = cast(dict[str, Any], services.get("ollama", {}))
+        except Exception:
+            whisper, ollama = {}, {}
+
+        # ---- Préparer un modèle affichable, robuste aux snapshots partiels ----
+        # 1) On privilégie la clé aplatie "model" (maintenue par AppStateManager.updateService/applyServerSnapshot)
+        # 2) Sinon on tente services.whisper.models.current (si jamais transmis brut par le serveur)
+        # 3) Sinon "—"
+        models_dict = (
+            cast(dict[str, Any], whisper.get("models", {}))
+            if isinstance(whisper.get("models"), dict)
+            else {}
+        )
+        display_model = cast(str, whisper.get("model") or models_dict.get("current") or "—")
+
+        # ---- Bloc Serveur: Whisper ----
+        w_state = str(whisper.get("state", "")).lower()
+        w_available = bool(whisper.get("available", False))
+        w_ready = bool(whisper.get("ready", False))
+        if w_state in ("loading", "starting", "pending"):
+            self._setStatus(self.serverWhisperValue, "en attente", "warning")
+        elif w_ready and w_available:
+            self._setStatus(self.serverWhisperValue, "prêt", "ready")
+        elif w_state == "error":
+            self._setStatus(self.serverWhisperValue, "erreur", "error")
+        else:
+            self._setStatus(self.serverWhisperValue, "non disponible", "neutral")
+
+        # ---- Bloc Serveur: Ollama ----
+        o_state = str(ollama.get("state", "")).lower()
+        o_available = bool(ollama.get("available", False))
+        o_ready = bool(ollama.get("ready", False))
+        if o_available:
+            if o_state in ("ready", "running", "idle") or o_ready:
+                self._setStatus(self.serverOllamaValue, "prêt", "ready")
+            elif o_state in ("starting", "loading", "pending"):
+                self._setStatus(self.serverOllamaValue, "en attente", "warning")
+            elif o_state == "error":
+                self._setStatus(self.serverOllamaValue, "erreur", "error")
+            else:
+                self._setStatus(self.serverOllamaValue, "en attente", "warning")
+        else:
+            self._setStatus(self.serverOllamaValue, "en attente", "warning")
+
+        # ---- Bloc Whisper Model ----
+        if w_state == "ready" and w_ready:
+            self._setStatus(self.whisperModelValue, display_model, "ready")
+        elif w_state in ("loading", "starting", "pending"):
+            # Si on connaît déjà le modèle ciblé, on l'affiche en mode 'chargement…'
+            if display_model != "—":
+                self._setStatus(self.whisperModelValue, f"{display_model} (chargement…)", "warning")
+            else:
+                self._setStatus(self.whisperModelValue, "chargement…", "warning")
+        elif w_state == "error":
+            self._setStatus(self.whisperModelValue, display_model, "error")
+        else:
+            self._setStatus(self.whisperModelValue, "—", "neutral")
+
+        # ---- Bloc Code Model ----
+        selected_code = parlia_data.get_code_model()
+        if o_ready and selected_code:
+            self._setStatus(self.codeModelValue, selected_code, "ready")
+        elif not o_available:
+            self._setStatus(self.codeModelValue, selected_code or "—", "neutral")
+        else:
+            self._setStatus(self.codeModelValue, selected_code or "—", "neutral")
+
+    # --- Actions UI ---
 
     def openPreferences(self) -> None:
         dlg = PreferencesDialog(self, iaServerService=self.iaServerService)
         dlg.setModelSelectedCallback(self._afterModelSelected)
         dlg.exec_()
 
-    # --- Mises à jour de statut ---
+    # --- Helpers statut → couleurs ---
 
     def _setStatus(self, value_label: QLabel, text: str, status_type: str) -> None:
         # couleurs simples pour feedback visuel
@@ -203,98 +320,6 @@ class SettingsPanel(QWidget):
         color = colors.get(status_type, "white")
         value_label.setText(text)
         value_label.setStyleSheet(f"color: {color}; font-weight: bold;")
-
-    def _updateServerStatus(self) -> None:
-        if self._lastStatus is None:
-            return
-        status = self._lastStatus
-
-        # Ollama
-        try:
-            oll = status["services"]["ollama"]
-            oll_available = bool(oll["available"])
-            if oll_available:
-                state = (oll["state"] or "").lower()
-                if state in ("ready", "running", "idle"):
-                    self._setStatus(self.serverOllamaValue, "prêt", "ready")
-                elif state in ("starting", "loading", "pending"):
-                    self._setStatus(self.serverOllamaValue, "en attente", "warning")
-                else:
-                    self._setStatus(self.serverOllamaValue, "erreur", "error")
-            else:
-                self._setStatus(self.serverOllamaValue, "en attente", "warning")
-        except Exception as e:
-            logger.error("Erreur update serveur (Ollama): %s", e)
-            self._setStatus(self.serverOllamaValue, "Injoignable", "error")
-
-        # Whisper
-        try:
-            wh = status["services"]["whisper"]
-            logger.debug(f"[Whisper] state={wh.get('state')} available={wh.get('available')}")
-            state = str(wh.get("state", "")).lower()
-            available = bool(wh.get("available", False))
-
-            if state in ("loading", "starting", "pending"):
-                # Pendant un chargement on n'affiche PAS "non disponible"
-                self._setStatus(self.serverWhisperValue, "en attente", "warning")
-            elif state == "ready" and available:
-                self._setStatus(self.serverWhisperValue, "prêt", "ready")
-            elif state == "error":
-                self._setStatus(self.serverWhisperValue, "erreur", "error")
-            else:
-                # Seulement si pas de loading et pas ready → "non disponible"
-                self._setStatus(self.serverWhisperValue, "non disponible", "neutral")
-        except Exception as e:
-            logger.error("Erreur update serveur (Whisper): %s", e)
-            self._setStatus(self.serverWhisperValue, "Injoignable", "error")
-
-    def _updateWhisperStatus(self) -> None:
-        if self._lastStatus is None:
-            return
-        status = self._lastStatus
-        try:
-            wh = status["services"]["whisper"]
-            models = wh.get("models", {})
-            current = (models.get("current") if isinstance(models, dict) else None) or "—"
-            state = (wh.get("state") or "").lower()
-
-            if state == "ready":
-                self._setStatus(self.whisperModelValue, str(current), "ready")
-            elif state in ("loading", "starting", "pending"):
-                self._setStatus(self.whisperModelValue, f"{current} (chargement…)", "warning")
-            elif state == "error":
-                self._setStatus(self.whisperModelValue, str(current) or "—", "error")
-            else:
-                # fallback si vraiment pas d'état
-                self._setStatus(self.whisperModelValue, "—", "neutral")
-
-        except Exception as e:
-            logger.error("Erreur update Whisper (modèle): %s", e)
-            self._setStatus(self.whisperModelValue, "—", "neutral")
-
-    def _updateCodeStatus(self) -> None:
-        if self._lastStatus is None:
-            return
-        status = self._lastStatus
-        try:
-            selected = parlia_data.get_code_model()
-            try:
-                oll = status["services"]["ollama"]
-                available = bool(oll["available"])
-                state = (oll["state"] or "").lower() if available else ""
-            except Exception:
-                self._setStatus(self.codeModelValue, "Injoignable", "error")
-                return
-
-            if available and state in ("ready", "running", "idle") and selected:
-                self._setStatus(self.codeModelValue, selected, "ready")
-            elif not available:
-                self._setStatus(self.codeModelValue, selected or "—", "neutral")
-            else:
-                self._setStatus(self.codeModelValue, selected or "—", "neutral")
-        except Exception as e:
-            logger.error("Erreur update Code (modèle): %s", e)
-            self._setStatus(self.codeModelValue, "—", "neutral")
 
     # --- WebSocket helpers ---
 
@@ -328,17 +353,21 @@ class SettingsPanel(QWidget):
                 return
 
             # Snapshot complet du statut
-            if "services" in dataAny:
+            if "services" in dataAny and isinstance(dataAny["services"], dict):
                 self._lastStatus = cast(StatusResponse, dataAny)
-                self._updateServerStatus()
-                self._updateWhisperStatus()
-                self._updateCodeStatus()
+                # 1) Propager au StateManager (source de vérité)
+                # NOTE: AppStateManager ne conserve pas le sous-dict "models".
+                #       Il conserve cependant la clé aplatie "model". Assurons-nous côté serveur d'envoyer
+                #       au moins "model", sinon on dépendra de l'optimisme local (updateService) et du fallback ci-dessus.
+                self.stateManager.applyServerSnapshot(cast(dict[str, Any], dataAny["services"]))
+                # 2) L'UI sera réactualisée via _onServicesUpdated
         except Exception as e:
             logger.error("Erreur parsing WS: %s", e)
 
     # --- Callbacks ---
 
     def _afterModelSelected(self) -> None:
+        # Callback fourni par PreferencesDialog (après sélection modèle). On le relaie si fourni.
         if self.update_record_callback:
             self.update_record_callback()
 
@@ -352,6 +381,13 @@ class SettingsPanel(QWidget):
         try:
             info = self.iaServerService.whisper.selectModel(saved)
             self.lastWhisperSelect = info or {}
+            # Optimisme contrôlé: marquer Whisper en loading pour verrouiller l'app jusqu'au snapshot suivant.
+            try:
+                self.stateManager.updateService(
+                    "whisper", {"available": True, "state": "loading", "model": saved}
+                )
+            except Exception:
+                pass
             self._setStatus(self.whisperModelValue, "chargement…", "warning")
         except Exception as e:
             logger.warning("Sélection Whisper initiale échouée: %s", e)
