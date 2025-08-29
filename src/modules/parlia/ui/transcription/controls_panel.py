@@ -23,7 +23,8 @@ class ControlsPanel(QWidget):
       - verrouiller l'UI en fonction de l'état global (recording / processing / busy),
       - (dés)activer le bouton Record selon la disponibilité de Whisper,
       - suivre les timers d'enregistrement et de traitement client (Stop→texte),
-      - empêcher toute modification de la durée max pendant rec/processing.
+      - empêcher toute modification de la durée max pendant rec/processing,
+      - **exiger une durée max strictement > 0 pour autoriser l'enregistrement**.
 
     L'orchestrateur applicatif doit se connecter aux signaux :
       - recordingStarted → démarrer la capture locale audio
@@ -43,6 +44,9 @@ class ControlsPanel(QWidget):
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.isRecording: bool = False  # état visuel local (synchro sur AppStateManager)
+
+        # Cache local des capacités → on combine avec la durée sélectionnée
+        self._capsCanRecord: bool = False
 
         # AppStateManager (singleton) et branchements signaux
         self.stateManager = AppStateManager()
@@ -84,7 +88,7 @@ class ControlsPanel(QWidget):
 
         self._populateDurationOptions()
         self._loadSavedDuration()
-        self.maxDurationComboBox.currentIndexChanged.connect(self.saveMaxDuration)
+        self.maxDurationComboBox.currentIndexChanged.connect(self._onDurationChanged)
 
         row = QHBoxLayout()
         row.addWidget(label)
@@ -93,7 +97,7 @@ class ControlsPanel(QWidget):
 
     def _populateDurationOptions(self) -> None:
         self.durationOptions: dict[int, str] = {
-            0: ParliaStrings.Transcription.NO_DURATION,
+            0: ParliaStrings.Transcription.NO_DURATION,  # 0 = désactivant l'enregistrement
             1: ParliaStrings.Transcription.DURATION_1_MIN,
             2: ParliaStrings.Transcription.DURATION_2_MIN,
             5: ParliaStrings.Transcription.DURATION_5_MIN,
@@ -110,7 +114,9 @@ class ControlsPanel(QWidget):
             if idx != -1:
                 self.maxDurationComboBox.setCurrentIndex(idx)
         else:
-            self.maxDurationComboBox.setCurrentIndex(0)
+            self.maxDurationComboBox.setCurrentIndex(
+                0
+            )  # Par défaut: 0 = aucun temps → enregistrement interdit
         # persistance simple
         currentKey = self.maxDurationComboBox.currentData()
         set_max_duration(currentKey)
@@ -119,6 +125,18 @@ class ControlsPanel(QWidget):
         """Enregistre la durée max sélectionnée (persistance utilisateur)."""
         selectedKey = self.maxDurationComboBox.currentData()
         set_max_duration(selectedKey)
+
+    def _selectedMaxDuration(self) -> int:
+        try:
+            return int(self.maxDurationComboBox.currentData())
+        except Exception:
+            return 0
+
+    @Slot()
+    def _onDurationChanged(self) -> None:
+        # Persiste + applique la gate d'activation
+        self.saveMaxDuration()
+        self._applyRecordingEnabledGate()
 
     # --- Timers ---
 
@@ -167,23 +185,36 @@ class ControlsPanel(QWidget):
     def toggleRecording(self) -> None:
         """Demande de bascule start/stop via AppStateManager + émissions orchestrateur.
 
-        - Start: on demande au StateManager; si accepté → on émet recordingStarted.
-        - Stop:  on demande au StateManager; si accepté → on émet recordingStopped.
+        - START → on demande au StateManager; si accepté → on émet recordingStarted.
+        - STOP  → on demande au StateManager; qu'il accepte ou non, on **émet quand même** recordingStopped
+                  si l'UI est en mode enregistrement, pour éviter toute désynchronisation.
         """
         current = self.stateManager.currentState()
+
+        # --- Intention STOP (plus robuste) ---
+        if current == TranscriptionState.RECORDING or self.isRecording:
+            accepted = self.stateManager.requestStopRecordingAndProcess()
+            # Quel que soit le résultat, on notifie l'orchestrateur afin d'arrêter le micro
+            self.recordingStopped.emit()
+            return
+
+        # --- Intention START ---
         if current in (TranscriptionState.IDLE, TranscriptionState.READY, TranscriptionState.ERROR):
+            if self._selectedMaxDuration() <= 0:
+                # Feedback utilisateur + rejet d'action cohérent
+                self.recordButton.setToolTip("Sélectionnez une durée d'enregistrement > 0 min.")
+                try:
+                    self.stateManager.actionRejected.emit(
+                        "no_duration", "Durée d'enregistrement requise."
+                    )
+                except Exception:
+                    pass
+                return
             accepted = self.stateManager.requestStartRecording()
             if accepted:
-                # L'orchestrateur démarre la capture audio locale
                 self.recordingStarted.emit()
-        elif current == TranscriptionState.RECORDING:
-            accepted = self.stateManager.requestStopRecordingAndProcess()
-            if accepted:
-                # L'orchestrateur arrête la capture et lance upload/transcription
-                self.recordingStopped.emit()
-        else:
-            # En PROCESSING → bouton normalement désactivé, on ignore.
-            pass
+            return
+        # En PROCESSING → bouton désactivé via UI d'état.
 
     # --- Helpers état UI ---
 
@@ -205,6 +236,7 @@ class ControlsPanel(QWidget):
         self.recordButton.setText(ParliaStrings.Transcription.STOP)
         self.recordButton.setObjectName("stopButton")
         self.recordButton.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop))
+        self.recordButton.setEnabled(True)  # IMPORTANT: on doit pouvoir stopper
         self.recordButton.style().unpolish(self.recordButton)
         self.recordButton.style().polish(self.recordButton)
 
@@ -224,7 +256,6 @@ class ControlsPanel(QWidget):
         self.recordButton.setText(ParliaStrings.Transcription.RECORD)
         self.recordButton.setObjectName("recordButton")
         self.recordButton.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
-        # enabled sera fixé par capabilitiesUpdated
         self.recordButton.style().unpolish(self.recordButton)
         self.recordButton.style().polish(self.recordButton)
 
@@ -237,10 +268,33 @@ class ControlsPanel(QWidget):
         busy = state in (TranscriptionState.RECORDING, TranscriptionState.PROCESSING)
         self.setMaxDurationEnabled(not busy)
         canRecord = self.stateManager.isWhisperReady() and not busy
-        self.setRecordingEnabled(canRecord)
+        self._capsCanRecord = bool(canRecord)
+        self._applyRecordingEnabledGate()
         # Timers → reset affichage initial
         self.resetRecordingTimerLabel()
         self.resetTranscriptionTimerLabel()
+
+    def _applyRecordingEnabledGate(self) -> None:
+        """Combine la capacité globale (canRecord) avec la règle locale (durée > 0).
+        ⚠️ Spécifique par état :
+           - RECORDING  → bouton **activé** (pour pouvoir stopper).
+           - PROCESSING → bouton **désactivé**.
+           - autres     → gate normale (canRecord & durée>0).
+        """
+        state = self.stateManager.currentState()
+        if state == TranscriptionState.RECORDING:
+            self.setRecordingEnabled(True)
+            return
+        if state == TranscriptionState.PROCESSING:
+            self.setRecordingEnabled(False)
+            return
+        enabled = self._capsCanRecord and (self._selectedMaxDuration() > 0)
+        self.setRecordingEnabled(enabled)
+        # Aide visuelle
+        if not enabled and self._selectedMaxDuration() <= 0:
+            self.recordButton.setToolTip("Sélectionnez une durée d'enregistrement > 0 min.")
+        else:
+            self.recordButton.setToolTip("")
 
     @Slot(str)
     def _onStateChanged(self, stateValue: str) -> None:
@@ -254,21 +308,21 @@ class ControlsPanel(QWidget):
             self.setMaxDurationEnabled(False)
         elif state in (TranscriptionState.READY, TranscriptionState.ERROR, TranscriptionState.IDLE):
             self._idleUi()
-            # L'activation du bouton est recalculée via capabilitiesUpdated
+            self._applyRecordingEnabledGate()
 
     @Slot(dict)
     def _onCapabilities(self, caps: dict[str, Any]) -> None:
         """Applique les capacités calculées (canRecord/canUseActions/busy)."""
-        self.setRecordingEnabled(bool(caps.get("canRecord", False)))
+        self._capsCanRecord = bool(caps.get("canRecord", False))
+        self._applyRecordingEnabledGate()
         # canUseActions géré par l'ActionsPanel ; ici on s'occupe surtout de Record
 
     @Slot(bool)
     def _onBusyChanged(self, busy: bool) -> None:
         """(Dés)active les contrôles qui ne doivent pas changer en cours d'opération."""
         self.setMaxDurationEnabled(not busy)
-        if busy:
-            # Par cohérence, le bouton Record est géré par capabilities, mais si busy True, on force disabled
-            self.setRecordingEnabled(False)
+        # Ne pas forcer recordButton ici : _applyRecordingEnabledGate() s'occupe des cas par état
+        self._applyRecordingEnabledGate()
 
     @Slot(str, str)
     def _onActionRejected(self, reasonCode: str, message: str) -> None:

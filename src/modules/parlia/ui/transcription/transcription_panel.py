@@ -3,7 +3,7 @@
 from typing import Any, Optional
 
 import qtawesome as qta
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from modules.parlia.core.app_state_manager import AppStateManager
 from modules.parlia.i18n.parlia_strings import ParliaStrings
 from modules.parlia.ui.dialogs.transcription_settings_dialog import (
     TranscriptionSettingsDialog,
@@ -29,6 +30,9 @@ logger = get_logger("TranscriptionPanel")
 
 class TranscriptionPanel(QWidget):
     """Orchestrateur : assemble ControlsPanel + ConversationPanel."""
+
+    # Nouveau signal pour rapatrier les résultats de transcription
+    transcriptionReady = Signal(dict)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -54,6 +58,9 @@ class TranscriptionPanel(QWidget):
 
         # ⇨ déclenche la transcription quand le fichier est réellement prêt
         audio_service.recordingFinished.connect(self._onRecordingFinished)
+
+        # Connexion du signal de transcription vers une méthode dans le thread UI
+        self.transcriptionReady.connect(self._onTranscriptionDone)
 
         load_qss_for(self)
         self.applyUiState()
@@ -86,12 +93,16 @@ class TranscriptionPanel(QWidget):
     def applyUiState(self) -> None:
         pass
 
+    @Slot(dict)
     def _onTranscriptionDone(self, result: dict[str, Any]) -> None:
+        stateManager = AppStateManager()
+        """Met à jour l'UI depuis le thread principal (appelé via Signal)."""
         if not result or "error" in result:
             self.conversationPanel.setMessageText("⚠️ Erreur lors de la transcription.")
             return
         text = result.get("text", "")
         self.conversationPanel.setMessageText(text)
+        stateManager.markTranscriptionReady()
 
     # --- Lifecycle ---
 
@@ -103,20 +114,28 @@ class TranscriptionPanel(QWidget):
         super().closeEvent(event)
 
     def _onRecordingStarted(self) -> None:
+        logger.info("[TranscriptionPanel] _onRecordingStarted")
         audio_service.start_recording()
         audio_service.connect_timer(self.controlsPanel.updateTimerLabel)
 
     def _onRecordingStopped(self) -> None:
         # Arrêt uniquement ; la transcription sera lancée sur recordingFinished(path)
+        logger.info("[TranscriptionPanel] _onRecordingStopped")
         audio_service.stop_recording()
+        AppStateManager().requestStopRecordingAndProcess()
 
     def _onRecordingFinished(self, filePath: str) -> None:
         # Lance la transcription uniquement quand le fichier est prêt
         if not filePath:
             return
+
+        # ⚠️ Le callback sera exécuté dans un thread → on émet un Signal
+        def _callback(result: dict[str, Any]) -> None:
+            self.transcriptionReady.emit(result)
+
         ia_server_service.whisper.transcribe_async(
             filePath,
-            callback=self._onTranscriptionDone,
+            callback=_callback,
         )
 
     def _onCopyMessage(self) -> None:

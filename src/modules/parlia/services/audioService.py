@@ -154,23 +154,12 @@ class AudioService(QObject):
         if self._worker:
             self._worker.stop()
 
-        # fermeture prudente du flux pour débloquer un read() en cours
-        if self.stream:
-            try:
-                self.stream.stop_stream()
-            except Exception:
-                pass
-            try:
-                self.stream.close()
-            except Exception:
-                pass
-            finally:
-                self.stream = None
+        # ⚠️ NE PAS fermer le flux ici → laissé au worker
+        self.stream = None
 
         # attendre la fin du thread (sauvegarde incluse)
         if self._thread:
             try:
-                # on demande aussi poliment l'arrêt si nécessaire
                 self._thread.quit()
                 self._thread.wait()
             except Exception as e:
