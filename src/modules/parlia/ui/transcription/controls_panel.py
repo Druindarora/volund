@@ -52,6 +52,8 @@ class ControlsPanel(QWidget):
         self.stateManager = AppStateManager()
 
         self.rootLayout = QVBoxLayout(self)
+        # self.rootLayout.setSpacing(4)
+        # self.rootLayout.setContentsMargins(0, 0, 0, 0)
 
         # Section durées / timers
         self.rootLayout.addLayout(self._createMaxDurationSection())
@@ -64,7 +66,7 @@ class ControlsPanel(QWidget):
         self.recordButton.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
         self.recordButton.setEnabled(True)
         self.recordButton.clicked.connect(self.toggleRecording)
-        self.rootLayout.addSpacing(10)
+        # self.rootLayout.addSpacing(10)
         self.rootLayout.addWidget(self.recordButton)
 
         # Connexions AppStateManager → UI
@@ -91,6 +93,8 @@ class ControlsPanel(QWidget):
         self.maxDurationComboBox.currentIndexChanged.connect(self._onDurationChanged)
 
         row = QHBoxLayout()
+        # row.setContentsMargins(0, 0, 0, 0)
+        # row.setSpacing(4)
         row.addWidget(label)
         row.addWidget(self.maxDurationComboBox)
         return row
@@ -145,6 +149,8 @@ class ControlsPanel(QWidget):
         self.recordingTimerLabel = QLabel(ParliaStrings.Transcription.TIMER_DEFAULT, self)
         self.recordingTimerLabel.setProperty("class", "timerLabel")
         row = QHBoxLayout()
+        # row.setContentsMargins(0, 0, 0, 0)
+        # row.setSpacing(4)
         row.addWidget(label)
         row.addWidget(self.recordingTimerLabel)
         return row
@@ -154,6 +160,8 @@ class ControlsPanel(QWidget):
         self.transcriptionTimerLabel = QLabel(ParliaStrings.Transcription.TIMER_DEFAULT, self)
         self.transcriptionTimerLabel.setProperty("class", "timerLabel")
         row = QHBoxLayout()
+        # row.setContentsMargins(0, 0, 0, 0)
+        # row.setSpacing(4)
         row.addWidget(label)
         row.addWidget(self.transcriptionTimerLabel)
         return row

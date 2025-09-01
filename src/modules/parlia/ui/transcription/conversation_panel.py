@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
@@ -14,6 +15,9 @@ from src.modules.parlia.ui.transcription.response_panel import ResponsePanel
 
 class ConversationPanel(QWidget):
     """Partie droite : onglets Message/Response, orchestrés par le TranscriptionPanel."""
+
+    copyMessageRequested = Signal()  # <--- ✅ nouveau signal
+    copyResponseRequested = Signal()  # (pour symétrie avec ControlsPanel si besoin)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -29,6 +33,9 @@ class ConversationPanel(QWidget):
         self.tabs.addTab(self.responsePanel, "Réponse")
 
         root.addWidget(self.tabs)
+
+        # ✅ relai du signal du MessagePanel
+        self.messagePanel.copyMessageRequested.connect(self.copyMessageRequested.emit)
 
     # --- API attendue ---
 

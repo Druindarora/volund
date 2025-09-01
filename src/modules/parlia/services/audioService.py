@@ -1,9 +1,9 @@
+# src/modules/parlia/services/audioService.py
 from __future__ import annotations
 
 import os
 import time
 import wave
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol, TypeAlias
 
@@ -43,7 +43,7 @@ class AudioRecorder(QObject):
     finished = Signal()
     update_time = Signal(float)
 
-    def __init__(self, service: AudioService) -> None:
+    def __init__(self, service: "AudioService") -> None:
         super().__init__()
         self.service: AudioService = service
         self.frames: list[bytes] = []
@@ -122,9 +122,13 @@ class AudioService(QObject):
         Path("recordings").mkdir(parents=True, exist_ok=True)
 
     def _build_output_path(self) -> Path:
-        # rec_YYYYMMDD_HHMMSS.wav
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return Path("recordings") / f"rec_{ts}.wav"
+        """
+        Toujours le même nom pour écraser la capture précédente.
+        Écriture atomique assurée dans _save_audio via os.replace().
+        """
+        base_dir = Path("recordings")
+        base_dir.mkdir(parents=True, exist_ok=True)
+        return base_dir / "recording.wav"
 
     def start_recording(self) -> None:
         if self.is_recording:
@@ -195,16 +199,28 @@ class AudioService(QObject):
             raise RuntimeError("L'objet PyAudio n'a pas pu être initialisé.")
         if not self.output_path:
             self.output_path = self._build_output_path()
-            Path(self.output_path.parent).mkdir(parents=True, exist_ok=True)
 
+        # S'assure que le dossier existe
+        Path(self.output_path.parent).mkdir(parents=True, exist_ok=True)
+
+        # Écriture atomique : .tmp puis replace()
+        tmp_path = self.output_path.with_suffix(".tmp")
         try:
-            with wave.open(str(self.output_path), "wb") as wf:
+            with wave.open(str(tmp_path), "wb") as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
                 wf.setframerate(44100)
                 wf.writeframes(b"".join(frames))
+            # Remplace le fichier cible de façon atomique (si existant)
+            os.replace(tmp_path, self.output_path)
         except Exception as e:
             logger.error(f"Erreur lors de la sauvegarde audio: {e}")
+            # Nettoyage du tmp si échec
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
             return None
 
         # logs utiles : durée & taille
@@ -217,7 +233,7 @@ class AudioService(QObject):
             file_size = 0
         logger.info(
             f"Fichier sauvegardé: {self.output_path} | "
-            f"durée ~ {duration:.2f}s | taille {file_size / 1024:.1f} KiB"
+            f"durée ~ {duration:.2f}s | taille {file_size / 1024:.1f} KiB (overwrite)"
         )
         return self.output_path
 

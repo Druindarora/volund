@@ -51,6 +51,8 @@ class TranscriptionPanel(QWidget):
 
         self.conversationPanel = ConversationPanel(self)
 
+        self.conversationPanel.copyMessageRequested.connect(self._onCopyMessage)
+
         contentRow = QHBoxLayout()
         contentRow.addWidget(self.controlsPanel)
         contentRow.addWidget(self.conversationPanel)
