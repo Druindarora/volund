@@ -149,8 +149,6 @@ class ControlsPanel(QWidget):
         self.recordingTimerLabel = QLabel(ParliaStrings.Transcription.TIMER_DEFAULT, self)
         self.recordingTimerLabel.setProperty("class", "timerLabel")
         row = QHBoxLayout()
-        # row.setContentsMargins(0, 0, 0, 0)
-        # row.setSpacing(4)
         row.addWidget(label)
         row.addWidget(self.recordingTimerLabel)
         return row
@@ -160,8 +158,6 @@ class ControlsPanel(QWidget):
         self.transcriptionTimerLabel = QLabel(ParliaStrings.Transcription.TIMER_DEFAULT, self)
         self.transcriptionTimerLabel.setProperty("class", "timerLabel")
         row = QHBoxLayout()
-        # row.setContentsMargins(0, 0, 0, 0)
-        # row.setSpacing(4)
         row.addWidget(label)
         row.addWidget(self.transcriptionTimerLabel)
         return row
@@ -337,3 +333,9 @@ class ControlsPanel(QWidget):
         """Feedback minimal en cas de refus (tooltip)."""
         self.recordButton.setToolTip(message)
         # Optionnel: logger/afficher un toast si nécessaire
+
+    @Slot()
+    def _handle_auto_stop(self):
+        # ⚡ Simuler un clic utilisateur sur STOP
+        self.recordingStopped.emit()
+        self.stateManager.requestStopRecordingAndProcess()

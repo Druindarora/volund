@@ -48,22 +48,18 @@ class ParliaStrings:
     class Settings:
         CURRENT_MODEL = "Modèle en cours : Aucun"
         CHOOSE_FOLDER = "Choisir dossier"
-        INCLUDE_CONCLUSION = (
-            "Inclure automatiquement la phrase de conclusion (non codé)"
-        )
+        INCLUDE_CONCLUSION = "Inclure automatiquement la phrase de conclusion (non codé)"
         CURRENT_CONCLUSION_PHRASES = "Phrases de conclusion actuelles :"
         NO_CURRENT_CONCLUSION = "Aucun"
         NEW_PHRASE = "Nouvelle phrase"
-        PLACEHOLDER_CUSTOM_PHRASE = (
-            "Entrez votre phrase de conclusion personnalisée ici..."
-        )
+        PLACEHOLDER_CUSTOM_PHRASE = "Entrez votre phrase de conclusion personnalisée ici..."
         ERROR_INVALID_FOLDER = "Erreur : Dossier invalide."
         NO_MODEL_SELECTED = "Aucun modèle sélectionné"
         NO_MODEL_FOUND = "Aucun modèle trouvé dans le dossier."
         CURRENT_FOLDER = "Dossier sélectionné : {folder}"
 
     class Home:
-        SETTINGS_TITLE = "⚙️ Paramètres"
+        SETTINGS_TITLE = "⚙️ Paramètres -"
         TRANSCRIPTION_TITLE = "📝 Transcription"
         ACTIONS_TITLE = "🔧 Actions"
 

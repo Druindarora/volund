@@ -15,12 +15,12 @@ from PySide6.QtWidgets import (
 
 from modules.parlia.core.app_state_manager import AppStateManager
 from modules.parlia.i18n.parlia_strings import ParliaStrings
+from modules.parlia.services.audioService import audio_service
 from modules.parlia.ui.dialogs.transcription_settings_dialog import (
     TranscriptionSettingsDialog,
 )
 from modules.parlia.utils.stylesheet_loader import load_qss_for
 from src.core.logger_manager import get_logger
-from src.modules.parlia.services.audioService import audio_service
 from src.modules.parlia.services.ia_server_service import ia_server_service
 from src.modules.parlia.ui.transcription.controls_panel import ControlsPanel
 from src.modules.parlia.ui.transcription.conversation_panel import ConversationPanel
@@ -60,6 +60,7 @@ class TranscriptionPanel(QWidget):
 
         # ⇨ déclenche la transcription quand le fichier est réellement prêt
         audio_service.recordingFinished.connect(self._onRecordingFinished)
+        audio_service.recordingStoppedByLimit.connect(self.controlsPanel._handle_auto_stop)
 
         # Connexion du signal de transcription vers une méthode dans le thread UI
         self.transcriptionReady.connect(self._onTranscriptionDone)

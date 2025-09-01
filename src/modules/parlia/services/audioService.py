@@ -10,6 +10,7 @@ from typing import Any, Callable, Optional, Protocol, TypeAlias
 from PySide6.QtCore import QObject, QThread, Signal
 
 from src.core.logger_manager import get_logger
+from src.modules.parlia.services.parlia_data import get_max_duration
 
 
 # -- Protocols pour Pyright/MyPy
@@ -84,6 +85,11 @@ class AudioRecorder(QObject):
                 elapsed = time.monotonic() - self.service.start_time
                 self.update_time.emit(elapsed)
 
+        # ✅ Après la boucle, vérifier si on a atteint la limite de durée
+        if (time.monotonic() - self.service.start_time) >= self.service.max_duration:
+            logger.info("⏱️ Limite atteinte, arrêt automatique de l’enregistrement.")
+            self.service.recordingStoppedByLimit.emit()
+
         # fermeture du flux côté worker (si encore ouvert)
         try:
             if stream:
@@ -105,6 +111,7 @@ class AudioRecorder(QObject):
 class AudioService(QObject):
     # signal émis à la fin de l'enregistrement avec le chemin du fichier (vide si rien écrit)
     recordingFinished = Signal(str)
+    recordingStoppedByLimit = Signal()  # ✅ nouveau signal
 
     def __init__(self, max_duration: int = 60) -> None:
         super().__init__()
@@ -135,6 +142,8 @@ class AudioService(QObject):
             raise RuntimeError("Enregistrement déjà en cours.")
         if not self.audio:
             raise RuntimeError("PyAudio non disponible.")
+
+        self.max_duration = get_max_duration() * 60
 
         self.output_path = self._build_output_path()
         self.is_recording = True
