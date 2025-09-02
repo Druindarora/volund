@@ -12,6 +12,7 @@ class ResponsePanel(QWidget):
     """Zone de texte réponse (IA/API)."""
 
     copyResponseRequested = Signal()
+    clearRequested = Signal()  # ⬅️ NEW: notification optionnelle au parent
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -30,6 +31,14 @@ class ResponsePanel(QWidget):
         self.copyResponseButton.setIcon(qta.icon("fa5s.copy", color="#B0E0E6"))
         self.copyResponseButton.clicked.connect(self._emitCopyResponse)
         row.addWidget(self.copyResponseButton)
+
+        self.clearButton = QToolButton(self)
+        self.clearButton.setObjectName("clearButton")  # important pour cibler en QSS
+        self.clearButton.setToolTip("Effacer la transcription")
+        self.clearButton.setIcon(qta.icon("fa5s.trash", color="#d9534f"))
+        self.clearButton.clicked.connect(self.clearResponseContent)
+
+        row.addWidget(self.clearButton)
 
         layout.addLayout(row)
 
@@ -52,6 +61,10 @@ class ResponsePanel(QWidget):
 
     def clear(self) -> None:
         self.textEdit.clear()
+
+    def clearResponseContent(self) -> None:
+        self.setText("")
+        self.clearRequested.emit()
 
     def _emitCopyResponse(self) -> None:
         self.copyResponseRequested.emit()

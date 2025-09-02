@@ -51,6 +51,14 @@ class ConversationPanel(QWidget):
     def getResponseText(self) -> str:
         return self.responsePanel.getText()
 
+    def clearMessage(self) -> None:
+        """Vide uniquement le panneau Message."""
+        self.messagePanel.setText("")
+
+    def clearResponse(self) -> None:
+        """Vide uniquement le panneau Réponse."""
+        self.responsePanel.setText("")
+
     def clear(self) -> None:
         # Réinitialise les deux onglets
         self.messagePanel.setText("")

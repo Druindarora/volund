@@ -63,3 +63,18 @@ QLabel.timerLabel {
     color: #00BCD4;
     font-weight: bold;
 }
+
+
+QToolButton#clearButton {
+    width: 24px;         /* carré */
+    height: 24px;        /* carré */
+    border: none;        /* pas de bordure */
+    padding: 0px;
+    qproperty-iconSize: 16px 16px;  /* taille icône */
+    color: #d9534f;      /* rouge bootstrap-like */
+}
+
+QToolButton#clearButton:hover {
+    background-color: rgba(217, 83, 79, 0.2); /* fond rouge léger au survol */
+    border-radius: 4px;
+}

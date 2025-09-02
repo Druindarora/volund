@@ -29,6 +29,8 @@ KEY_MODEL_FOLDER = "model_folder_path"
 KEY_INCLUDE_CONCLUSION = "include_conclusion"
 KEY_CONCLUSION_TEXT = "conclusion_text"
 KEY_PROMPT_CODE_VS_CODE = "prompt_code_vs_code"
+KEY_TRANSCRIPTION_MODE = "transcription_mode"
+
 
 PROMPT_DEFINITIONS = {
     "prompt_code_comments": "Code les commentaires (focus VS Code et code)",
@@ -114,3 +116,24 @@ def set_prompt(key: str, prompt: str) -> None:
 
 def get_prompt_label(key: str) -> str:
     return PROMPT_DEFINITIONS.get(key, key)
+
+
+def get_transcription_mode() -> str:
+    """
+    Returns the saved transcription mode: "classic" or "streaming".
+    Defaults to "classic" if not set or invalid.
+    """
+    value = user_data.get(MODULE_NAME, KEY_TRANSCRIPTION_MODE)
+    if isinstance(value, str) and value in ("classic", "streaming"):
+        return value
+    return "classic"
+
+
+def set_transcription_mode(mode: str) -> None:
+    """
+    Persists the transcription mode. Only accepts "classic" or "streaming".
+    Falls back to "classic" if an unexpected value is provided.
+    """
+    if mode not in ("classic", "streaming"):
+        mode = "classic"
+    user_data.set(MODULE_NAME, KEY_TRANSCRIPTION_MODE, mode)

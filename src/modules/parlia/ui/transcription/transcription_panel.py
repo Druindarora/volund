@@ -1,9 +1,11 @@
-# transcription_panel.py
+# src/modules/parlia/ui/transcription/transcription_panel.py
+from __future__ import annotations
 
 from typing import Any, Optional
 
 import qtawesome as qta
 from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -29,9 +31,8 @@ logger = get_logger("TranscriptionPanel")
 
 
 class TranscriptionPanel(QWidget):
-    """Orchestrateur : assemble ControlsPanel + ConversationPanel."""
+    """Orchestrator: ControlsPanel + ConversationPanel."""
 
-    # Nouveau signal pour rapatrier les résultats de transcription
     transcriptionReady = Signal(dict)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
@@ -40,17 +41,13 @@ class TranscriptionPanel(QWidget):
         self.mainLayout = QVBoxLayout(self)
         self._addHeader()
 
-        # Sous-panneaux
         self.controlsPanel = ControlsPanel(parent=self)
-
-        # Connecter les signaux du ControlsPanel à l’orchestrateur
         self.controlsPanel.recordingStarted.connect(self._onRecordingStarted)
         self.controlsPanel.recordingStopped.connect(self._onRecordingStopped)
         self.controlsPanel.copyMessageRequested.connect(self._onCopyMessage)
         self.controlsPanel.copyResponseRequested.connect(self._onCopyResponse)
 
         self.conversationPanel = ConversationPanel(self)
-
         self.conversationPanel.copyMessageRequested.connect(self._onCopyMessage)
 
         contentRow = QHBoxLayout()
@@ -58,11 +55,12 @@ class TranscriptionPanel(QWidget):
         contentRow.addWidget(self.conversationPanel)
         self.mainLayout.addLayout(contentRow)
 
-        # ⇨ déclenche la transcription quand le fichier est réellement prêt
         audio_service.recordingFinished.connect(self._onRecordingFinished)
         audio_service.recordingStoppedByLimit.connect(self.controlsPanel._handle_auto_stop)
 
-        # Connexion du signal de transcription vers une méthode dans le thread UI
+        # 🔴 Nouveau: écouter les partiels du streaming
+        audio_service.partialTranscriptAvailable.connect(self._onPartialTranscript)
+
         self.transcriptionReady.connect(self._onTranscriptionDone)
 
         load_qss_for(self)
@@ -91,15 +89,25 @@ class TranscriptionPanel(QWidget):
         dlg = TranscriptionSettingsDialog(self)
         dlg.exec_()
 
-    # --- Orchestration ---
+    # --- UI state ---
 
     def applyUiState(self) -> None:
         pass
 
+    # --- Streaming partiels → append UI ---
+
+    @Slot(str)
+    def _onPartialTranscript(self, text: str) -> None:
+        # append incremental text sans écraser
+        current = self.conversationPanel.getMessageText()
+        sep = "" if not current or current.endswith((" ", "\n")) else " "
+        self.conversationPanel.setMessageText(f"{current}{sep}{text}")
+
+    # --- Final transcription ---
+
     @Slot(dict)
     def _onTranscriptionDone(self, result: dict[str, Any]) -> None:
         stateManager = AppStateManager()
-        """Met à jour l'UI depuis le thread principal (appelé via Signal)."""
         if not result or "error" in result:
             self.conversationPanel.setMessageText("⚠️ Erreur lors de la transcription.")
             return
@@ -109,30 +117,59 @@ class TranscriptionPanel(QWidget):
 
     # --- Lifecycle ---
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         try:
             ia_server_service.cleanup()
         except Exception as e:
             logger.error(f"[TranscriptionPanel] cleanup error: {e}")
         super().closeEvent(event)
 
+    # --- Non-streaming flow (existant) ---
+
     def _onRecordingStarted(self) -> None:
         logger.info("[TranscriptionPanel] _onRecordingStarted")
-        audio_service.start_recording()
+        # Read selected mode from ControlsPanel
+        mode = (
+            self.controlsPanel.getSelectedMode()
+            if hasattr(self.controlsPanel, "getSelectedMode")
+            else (
+                self.controlsPanel.selectedMode()
+                if hasattr(self.controlsPanel, "selectedMode")
+                else "classic"
+            )
+        )
+
+        if mode == "streaming":
+            audio_service.startStreamingRecording()
+        else:
+            audio_service.start_recording()
+
         audio_service.connect_timer(self.controlsPanel.updateTimerLabel)
 
     def _onRecordingStopped(self) -> None:
-        # Arrêt uniquement ; la transcription sera lancée sur recordingFinished(path)
         logger.info("[TranscriptionPanel] _onRecordingStopped")
-        audio_service.stop_recording()
+        # Read selected mode from ControlsPanel
+        mode = (
+            self.controlsPanel.getSelectedMode()
+            if hasattr(self.controlsPanel, "getSelectedMode")
+            else (
+                self.controlsPanel.selectedMode()
+                if hasattr(self.controlsPanel, "selectedMode")
+                else "classic"
+            )
+        )
+
+        if mode == "streaming":
+            audio_service.stopStreamingRecording()
+        else:
+            audio_service.stop_recording()
+
         AppStateManager().requestStopRecordingAndProcess()
 
     def _onRecordingFinished(self, filePath: str) -> None:
-        # Lance la transcription uniquement quand le fichier est prêt
         if not filePath:
             return
 
-        # ⚠️ Le callback sera exécuté dans un thread → on émet un Signal
         def _callback(result: dict[str, Any]) -> None:
             self.transcriptionReady.emit(result)
 
@@ -140,6 +177,8 @@ class TranscriptionPanel(QWidget):
             filePath,
             callback=_callback,
         )
+
+    # --- Copy helpers ---
 
     def _onCopyMessage(self) -> None:
         text = self.conversationPanel.getMessageText()

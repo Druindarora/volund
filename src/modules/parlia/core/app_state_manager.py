@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import QElapsedTimer, QObject, QTimer, Signal
+from PySide6.QtCore import QElapsedTimer, QObject, QTimer, Signal, Slot
 
 # --- Énumérations d'état et services ---
 
@@ -93,6 +93,8 @@ class AppStateManager(QObject):
     # Action refusée (ex. startRecording alors que whisper non prêt).
     actionRejected = Signal(str, str)  # (reasonCode, humanMessage)
 
+    limitExceeded = Signal()
+
     # --- Singleton ---
 
     _instance: Optional["AppStateManager"] = None
@@ -115,6 +117,10 @@ class AppStateManager(QObject):
 
         # État de transcription courant
         self._state: TranscriptionState = TranscriptionState.IDLE
+        self._mode: str = "classic"
+
+        # Référence optionnelle vers le service audio (injecté ailleurs)
+        self.audioService: Optional[Any] = None
 
         # Statuts des services (extensible)
         self._services: Dict[str, ServiceStatus] = {
@@ -387,6 +393,63 @@ class AppStateManager(QObject):
     def _onProcessingTick(self) -> None:
         secs = self._elapsedSeconds(self._processingElapsed)
         self.processingTimerTick.emit(secs)
+
+    def requestStopStreaming(self) -> bool:
+        """
+        Stoppe proprement le streaming :
+        - délègue à audioService.stopStreaming()
+        - arrête le timer d'enregistrement
+        - ne passe pas par PROCESSING
+        - passe directement à READY
+        """
+        if self._state != TranscriptionState.RECORDING:
+            self.actionRejected.emit(
+                "invalid_state", "Stop streaming seulement en cours d'enregistrement."
+            )
+            return False
+
+        # Délégation tolérante au service audio
+        try:
+            svc = self.audioService
+            stop = getattr(svc, "stopStreaming", None) if svc is not None else None
+            if callable(stop):
+                stop()
+        except Exception:
+            # On n'empêche pas la transition UI si le service échoue
+            pass
+
+        # Transition directe vers READY sans phase de PROCESSING
+        self._stopRecordingTimer()
+        self._resetProcessingTimer()
+        self._setState(TranscriptionState.READY)
+        return True
+
+    def attachAudioService(self, svc: Any) -> None:
+        """Injecte le service audio et connecte les signaux utiles."""
+        # déconnecte l'ancien si présent
+        if self.audioService is not None:
+            try:
+                self.audioService.recordingLimitReached.disconnect(self._onRecordingLimitReached)
+            except Exception:
+                pass
+
+        self.audioService = svc
+        try:
+            svc.recordingLimitReached.connect(self._onRecordingLimitReached)
+        except Exception:
+            # Si le signal n'existe pas (ancienne version), on ignore proprement
+            pass
+
+    def setTranscriptionMode(self, mode: str) -> None:
+        """Fixe le mode courant pour gérer des comportements spécifiques au streaming."""
+        self._mode = "streaming" if mode == "streaming" else "classic"
+
+    @Slot()
+    def _onRecordingLimitReached(self) -> None:
+        """En streaming: ne pas changer d'état, informer simplement l'UI."""
+        if self._mode == "streaming":
+            # On reste en RECORDING, on n'enclenche pas le PROCESSING.
+            self.limitExceeded.emit()
 
     # --- Utilitaires ---
 
