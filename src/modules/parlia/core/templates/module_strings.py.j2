@@ -1,0 +1,21 @@
+# === FICHIER : module_strings.py.j2 ===
+# Centralisation des constantes de texte pour le module {{ name }}
+# (template de base à enrichir selon les besoins spécifiques du module)
+
+class ModuleStrings:
+    class Common:
+        ANNULER = "Annuler"
+        VALIDER = "Valider"
+        OK = "OK"
+        CONFIRMER = "Confirmer"
+        RETOUR = "Retour"
+
+    @staticmethod
+    def as_dict():
+        return {% raw %}{
+            "COMMON": {
+                attr: getattr(ModuleStrings.Common, attr)
+                for attr in dir(ModuleStrings.Common)
+                if not attr.startswith("_")
+            }
+        }{% endraw %}

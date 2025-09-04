@@ -1,0 +1,14 @@
+# templates/home_panel_template.py.j2
+
+from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from typing import Optional
+
+class HomePanel(QWidget):
+    def __init__(self, main_window: Optional[QWidget] = None) -> None:
+        super().__init__(parent=main_window)
+        self.main_window = main_window
+
+        layout = QVBoxLayout()
+        label = QLabel("Bienvenue dans ce nouveau module")
+        layout.addWidget(label)
+        self.setLayout(layout)

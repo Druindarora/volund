@@ -1,0 +1,26 @@
+# === FICHIER : module_data.py ===
+# Interface de données pour le module {{ name }}
+# (exemple minimal avec une clé unique + getter/setter)
+
+from core.user_data_manager import user_data
+
+MODULE_NAME = "{{ name }}"
+
+# Exemple de clé de configuration
+KEY_EXAMPLE = "example_value"
+
+
+def get_example_value() -> str:
+    """
+    Récupère la valeur associée à KEY_EXAMPLE.
+    Retourne une chaîne vide si non définie.
+    """
+    value = user_data.get(MODULE_NAME, KEY_EXAMPLE)
+    return value if isinstance(value, str) else ""
+
+
+def set_example_value(value: str) -> None:
+    """
+    Définit la valeur associée à KEY_EXAMPLE.
+    """
+    user_data.set(MODULE_NAME, KEY_EXAMPLE, value)

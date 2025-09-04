@@ -1,0 +1,60 @@
+# {{ name }}
+
+{{ description }}
+
+---
+
+## 📦 Module Info
+- **Name**: {{ name }}
+- **Version**: {{ version }}
+- **Icon**: {{ icon_path }}
+- **Tags**: {{ tags }}
+- **Mobile**: {{ mobile }}
+- **Favorite**: {{ favorite }}
+
+---
+
+## 📂 Project Structure
+```
+{{ name }}/
+├── assets/
+│   ├── images/
+│   │   └── {{ name }}.png
+│   └── styles/
+├── core/
+│   └── logger.py
+├── db/
+├── i18n/
+│   └── module_strings.py
+├── services/
+│   └── module_data.py
+├── tests/
+│   └── test_basic.py
+├── ui/
+│   ├── dialogs/
+│   └── home_panel.py
+├── utils/
+│   └── stylesheet_loader.py
+├── workers/
+└── __init__.py
+```
+
+---
+
+## 🚀 Quickstart
+1. Le module est automatiquement détecté par **Volund**.
+2. Pour le lancer manuellement :
+   ```python
+   from modules.{{ name }} import launch
+   widget = launch()
+   ```
+
+---
+
+## ✅ TODOs
+- [ ] Compléter le `HomePanel` (UI principale).
+- [ ] Ajouter des tests unitaires dans `tests/test_basic.py`.
+- [ ] Définir les constantes i18n dans `i18n/module_strings.py`.
+- [ ] Définir les données persistantes dans `services/module_data.py`.
+- [ ] Ajouter des styles personnalisés (`assets/styles/*.qss`).
+- [ ] Mettre à jour cette documentation si nécessaire.

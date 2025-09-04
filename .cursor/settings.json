@@ -1,6 +1,8 @@
 {
     "files.associations": {
-      "*.qss": "css"
+      "*.qss": "css",
+      "*.py": "python",
+      "*.j2": "jinja"
     },
     "emmet.includeLanguages": {
       "qss": "css"

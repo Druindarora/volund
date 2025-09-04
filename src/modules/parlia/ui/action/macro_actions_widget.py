@@ -5,7 +5,9 @@ from typing import Optional
 
 import qtawesome as qta
 from PySide6.QtCore import QSize
-from PySide6.QtWidgets import QGridLayout, QPushButton, QWidget
+from PySide6.QtWidgets import QDialog, QGridLayout, QPushButton, QWidget
+
+from src.modules.parlia.ui.dialogs.create_module_dialog import CreateModuleDialog
 
 
 class MacroActionsWidget(QWidget):
@@ -41,6 +43,7 @@ class MacroActionsWidget(QWidget):
         btn.setStyleSheet(
             "background-color: #4A90E2; border-radius: 8px; padding: 8px; color: black;"
         )
+        btn.clicked.connect(self._onCreateModuleClicked)
         return btn
 
     def createGenerateFromSpecButton(self) -> QPushButton:
@@ -97,3 +100,9 @@ class MacroActionsWidget(QWidget):
             "background-color: #9370DB; border-radius: 8px; padding: 8px; color: black;"
         )
         return btn
+
+    def _onCreateModuleClicked(self) -> None:
+        dialog = CreateModuleDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Ici tu pourras ajouter le rafraîchissement de l’explorateur de fichiers
+            pass

@@ -1,0 +1,7 @@
+# templates/test_basic_template.py.tpl
+from __future__ import annotations
+
+import importlib
+
+def test_import() -> None:
+    importlib.import_module("src.modules.{{name}}")

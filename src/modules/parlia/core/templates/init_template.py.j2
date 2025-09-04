@@ -1,0 +1,32 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from PySide6.QtWidgets import QWidget
+from models.module_info import ModuleInfo as BaseModuleInfo
+
+if TYPE_CHECKING:
+    from modules.{{ name }}.ui.home_panel import HomePanel
+
+name: str = "{{ name }}"
+version: str = "{{ version }}"
+description: str = "{{ description }}"
+icon_path: str = "assets/images/{{ name }}.png"
+tags: list[str] = []
+favorite: bool = {{ favorite }}
+mobile: bool = {{ mobile }}
+path: str = ""
+
+def launch(parent: QWidget | None = None) -> QWidget:
+    # ⚠️ Import déplacé ici pour éviter l'importation circulaire
+    from modules.{{ name }}.ui.home_panel import HomePanel
+    return HomePanel(main_window=parent)
+
+ModuleInfo = BaseModuleInfo(
+    name=name,
+    version=version,
+    description=description,
+    icon_path=icon_path,
+    tags=tags,
+    favorite=favorite,
+    mobile=mobile,
+    path=path,
+)

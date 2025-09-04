@@ -1,0 +1,54 @@
+# === FICHIER : stylesheet_loader.py.j2 ===
+
+import inspect
+import os
+from typing import Optional, Protocol
+
+
+class StyleSheetHost(Protocol):
+    # Qt définit setStyleSheet(str, /) -> None (paramètre position-only)
+    def setStyleSheet(self, styleSheet: str, /) -> None: ...
+
+
+def load_qss_for(widget: StyleSheetHost, stylesheet_name: Optional[str] = None) -> None:
+    """
+    Charge un fichier QSS situé dans src/modules/<module_root>/assets/styles/
+    Déduction du prefix :
+      - ui/xxx_panel.py        -> xxx_style.qss
+      - ui/xxx/xxx_panel.py    -> xxx_style.qss
+    """
+    caller_file = inspect.stack()[1].filename
+    base_dir = os.path.dirname(caller_file)
+
+    # Détection du module root : modules/<nom>
+    parts = base_dir.split(os.sep)
+    if "modules" not in parts:
+        raise RuntimeError(f"[STYLE] Impossible de localiser 'modules' dans le chemin : {base_dir}")
+    idx = parts.index("modules")
+    module_root = os.sep + os.path.join(*parts[: idx + 2])
+
+    # Détermination du prefix
+    if stylesheet_name is None:
+        panel_file = os.path.basename(caller_file)  # ex: transcription_panel.py
+        panel_prefix = panel_file.split("_panel.py")[0]
+
+        # cas: si on est dans un sous-dossier ui/transcription/transcription_panel.py
+        parent_dir = os.path.basename(base_dir)
+        if parent_dir == panel_prefix:
+            panel_prefix = parent_dir
+
+        qss_file = f"{panel_prefix}_style.qss"
+    else:
+        qss_file = f"{stylesheet_name}.qss"
+
+    # Construction du chemin final
+    qss_path = os.path.join(module_root, "assets", "styles", qss_file)
+    qss_path = os.path.abspath(qss_path)
+
+    # Chargement effectif
+    if os.path.exists(qss_path):
+        with open(qss_path, "r", encoding="utf-8") as f:
+            widget.setStyleSheet(f.read())
+        print(f"[STYLE] QSS chargé : {qss_path}")
+    else:
+        print(f"[STYLE] Aucun QSS trouvé : {qss_path} (non bloquant)")
